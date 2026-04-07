@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaos Librarian Inventory System</title>
+
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom CSS for additional styling -->
+    <link rel="stylesheet" href="src/css/styles.css">
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 min-h-screen">
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+
+        <!-- Header Section -->
+        <header class="text-center mb-8 animate-fade-in">
+            <div class="flex items-center justify-center gap-3 mb-2">
+                <i class="fas fa-box-archive text-purple-600 text-5xl"></i>
+                <h1 class="text-5xl font-bold text-gray-800">
+                    Chaos Librarian Inventory
+                </h1>
+            </div>
+            <p class="text-gray-600 text-lg">Organize your archive with intelligent bin management</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-white rounded-lg shadow-md p-2 mb-6 flex gap-2">
+            <button
+                onclick="switchView('list')"
+                id="tab-list"
+                class="flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-green-600 text-white">
+                <i class="fas fa-list"></i>
+                List All
+            </button>
+            <button
+                onclick="switchView('add')"
+                id="tab-add"
+                class="flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200">
+                <i class="fas fa-plus"></i>
+                Add Item
+            </button>
+            <button
+                onclick="switchView('find')"
+                id="tab-find"
+                class="flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200">
+                <i class="fas fa-search"></i>
+                Find Item
+            </button>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="bg-white rounded-lg shadow-lg p-6 min-h-[400px] mb-6">
+
+            <!-- Add View -->
+            <div id="view-add" class="view-content hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-plus-circle text-purple-600"></i>
+                    Add New Item
+                </h2>
+
+                <form id="addItemForm" class="space-y-4">
+                    <!-- Item Name Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-tag mr-1"></i>
+                            Item Name
+                        </label>
+                        <input
+                            type="text"
+                            id="itemName"
+                            placeholder="Enter item name..."
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
+                            required
+                        />
+                    </div>
+
+                    <!-- Tags Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-tags mr-1"></i>
+                            Tags (comma-separated)
+                        </label>
+                        <input
+                            type="text"
+                            id="itemTags"
+                            placeholder="e.g., fiction, hardcover, bestseller"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
+                        />
+                    </div>
+
+                    <!-- Next Bin Assignment Info -->
+                    <div class="flex items-center gap-2 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <i class="fas fa-location-dot text-purple-600 text-xl"></i>
+                        <span class="text-sm text-purple-700">
+                            Next assignment: <strong id="nextBinDisplay">Bin-A</strong>
+                        </span>
+                    </div>
+
+                    <!-- Add Button -->
+                    <button
+                        type="submit"
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition flex items-center justify-center gap-2 transform hover:scale-105"
+                    >
+                        <i class="fas fa-plus"></i>
+                        Add to Inventory
+                    </button>
+                </form>
+            </div>
+
+            <!-- Find View -->
+            <div id="view-find" class="view-content hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-magnifying-glass text-blue-600"></i>
+                    Find Items
+                </h2>
+
+                <!-- Search Input -->
+                <div class="flex gap-2 mb-6">
+                    <input
+                        type="text"
+                        id="searchQuery"
+                        placeholder="Search by name or tag..."
+                        class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    />
+                    <button
+                        onclick="handleSearch()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition flex items-center gap-2 transform hover:scale-105"
+                    >
+                        <i class="fas fa-search"></i>
+                        Search
+                    </button>
+                </div>
+
+                <!-- Search Results Container -->
+                <div id="searchResults"></div>
+            </div>
+
+            <!-- List View -->
+            <div id="view-list" class="view-content">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-list-ul text-green-600"></i>
+                    All Inventory Items
+                </h2>
+
+                <!-- List Container -->
+                <div id="inventoryList"></div>
+            </div>
+
+        </div>
+
+        <!-- Message Display -->
+        <div id="messageBox" class="hidden fixed top-4 right-4 p-4 rounded-lg shadow-lg max-w-md z-50 animate-slide-in"></div>
+
+        <!-- Bin Status Footer -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                <i class="fas fa-warehouse"></i>
+                Storage Bins Status
+            </h3>
+            <div id="binStatus" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+        </div>
+
+    </div>
+
+    <!-- Main JavaScript Entry Point -->
+    <script src="src/js/main.js"></script>
+
+    <!-- Component Scripts -->
+    <script src="src/js/components/book_manager.js"></script>
+    <script src="src/js/components/inventory_tracker.js"></script>
+    <script src="src/js/components/reports.js"></script>
+
+</body>
+</html>
