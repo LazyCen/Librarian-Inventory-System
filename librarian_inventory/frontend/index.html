@@ -3,199 +3,462 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chaos Librarian Inventory System</title>
+    <title>RegTech — Librarian Inventory</title>
+    <meta name="description" content="Librarian Inventory System — manage and track your library resources with ease.">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <link rel="stylesheet" href="src/css/styles.css">
     <link rel="stylesheet" href="src/css/auth/styles.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; height: 100vh; margin: 0; }
+        #auth-section {
+            background: #2563eb;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 min-h-screen">
+<body>
 
-    <div id="auth-section" class="min-h-screen flex items-center justify-center px-4 animate-fade-in">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <!-- ============================================================
+         AUTH SECTION (Restored to Original State)
+         ============================================================ -->
+    <div id="auth-section" class="login-body">
+
+        <!-- Floating Books Layer -->
+        <div class="books-layer" id="booksLayer"></div>
+
+        <!-- Login Card -->
+        <div class="glass-container animate-fade-in" style="width:100%;max-width:380px;padding:36px 32px; z-index: 10;">
+
+            <!-- Logo + System Name -->
+            <div class="login-logo-row">
+                <i class="fas fa-book-open login-logo-icon"></i>
+                <span class="login-system-title">Librarian Inventory System</span>
+            </div>
             
-            <div class="auth-header-gradient p-10 text-center text-white">
-                <i class="fas fa-box-archive text-5xl mb-4"></i>
-                <h2 id="auth-title" class="text-3xl font-bold">Welcome Back</h2>
-                <p id="auth-subtitle" class="text-purple-100 mt-2">Log in to manage your archive</p>
-            </div>
-
-            <div class="p-8">
-                <form id="loginForm" class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                        <input type="email" required class="w-full px-4 py-3 rounded-lg outline-none auth-input" placeholder="librarian@chaos.com">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-                        <input type="password" required class="w-full px-4 py-3 rounded-lg outline-none auth-input" placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="w-full btn-auth text-white font-bold py-3.5 rounded-xl shadow-lg">
-                        Sign In
-                    </button>
-                    <p class="text-center text-sm text-gray-500 mt-4">
-                        New librarian? <a href="#" onclick="toggleAuth(true)" class="text-purple-600 font-bold hover:underline">Create Account</a>
-                    </p>
-                </form>
-
-                <form id="signupForm" class="space-y-5 hidden">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
-                        <input type="text" required class="w-full px-4 py-3 rounded-lg outline-none auth-input">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                        <input type="email" required class="w-full px-4 py-3 rounded-lg outline-none auth-input">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-                        <input type="password" required class="w-full px-4 py-3 rounded-lg outline-none auth-input">
-                    </div>
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition">
-                        Create Account
-                    </button>
-                    <p class="text-center text-sm text-gray-500 mt-4">
-                        Already have an account? <a href="#" onclick="toggleAuth(false)" class="text-purple-600 font-bold hover:underline">Log In</a>
-                    </p>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div id="main-app" class="container mx-auto px-4 py-8 max-w-6xl hidden">
-
-        <header class="text-center mb-8 animate-fade-in relative">
-            <button onclick="handleLogout()" class="absolute right-0 top-0 text-gray-400 hover:text-red-600 transition flex items-center gap-2">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
-            <div class="flex items-center justify-center gap-3 mb-2">
-                <i class="fas fa-box-archive text-purple-600 text-5xl"></i>
-                <h1 class="text-5xl font-bold text-gray-800">Chaos Librarian Inventory</h1>
-            </div>
-            <p class="text-gray-600 text-lg">Organize your archive with intelligent bin management</p>
-        </header>
-
-        <div class="bg-white rounded-lg shadow-md p-2 mb-6 flex gap-2">
-            <button onclick="switchView('list')" id="tab-list" class="flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-green-600 text-white">
-                <i class="fas fa-list"></i> List All
-            </button>
-            <button onclick="switchView('add')" id="tab-add" class="flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200">
-                <i class="fas fa-plus"></i> Add Item
-            </button>
-            <button onclick="switchView('find')" id="tab-find" class="flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200">
-                <i class="fas fa-search"></i> Find Item
-            </button>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-lg p-6 min-h-[400px] mb-6">
-            <div id="view-add" class="view-content hidden">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <i class="fas fa-plus-circle text-purple-600"></i> Add New Item
-                </h2>
-                <form id="addItemForm" class="space-y-4">
-                    <input type="text" id="itemName" placeholder="Item Name" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" required />
-                    <input type="text" id="itemTags" placeholder="Tags" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
-                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-200 text-purple-700">
-                        Next assignment: <strong id="nextBinDisplay">Bin-A</strong>
-                    </div>
-                    <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition transform hover:scale-105">
-                        Add to Inventory
-                    </button>
-                </form>
-            </div>
-
-            <div id="view-find" class="view-content hidden">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <i class="fas fa-magnifying-glass text-blue-600"></i> Find Items
-                </h2>
-                <div class="flex gap-2">
-                    <input type="text" id="searchQuery" placeholder="Search..." class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                    <button onclick="handleSearch()" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition">Search</button>
+            <!-- LOGIN FORM -->
+            <form id="loginForm" style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                    <label class="auth-label" for="loginEmail">Email</label>
+                    <input id="loginEmail" type="email" required class="auth-input" placeholder="JohnDoe@test.com">
                 </div>
-                <div id="searchResults" class="mt-6"></div>
-            </div>
 
-            <div id="view-list" class="view-content">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <i class="fas fa-list-ul text-green-600"></i> All Inventory Items
-                </h2>
-                <div id="inventoryList"></div>
-            </div>
-        </div>
+                <div>
+                    <label class="auth-label" for="loginPassword">Password</label>
+                    <div class="input-wrapper">
+                        <input id="loginPassword" type="password" required class="auth-input" placeholder="Password" style="padding-right:38px;">
+                        <button type="button" class="toggle-pw" onclick="togglePw('loginPassword',this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
 
-        <div id="messageBox" class="hidden fixed top-4 right-4 p-4 rounded-lg shadow-lg max-w-md z-50 animate-slide-in"></div>
+                <div style="text-align:left;">
+                    <a href="#" class="forgot-link">Forgot Password?</a>
+                </div>
 
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <i class="fas fa-warehouse"></i> Storage Bins Status
-            </h3>
-            <div id="binStatus" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                <button type="submit" class="btn-signin">Sign in</button>
+
+                <!-- Divider -->
+                <div class="divider-row">
+                    <div class="divider-line"></div>
+                    <span class="divider-text">or continue with</span>
+                    <div class="divider-line"></div>
+                </div>
+
+                <!-- Social Buttons -->
+                <div class="social-grid">
+                    <button type="button" id="googleLogin" class="social-btn" title="Continue with Google">
+                        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google">
+                    </button>
+                    <button type="button" id="facebookLogin" class="social-btn" title="Continue with Facebook">
+                        <i class="fab fa-facebook" style="color:#1877F2;"></i>
+                    </button>
+                </div>
+
+                <p class="register-text">
+                    Don't have an account yet? <a href="#" onclick="toggleAuth(true)">Register for free</a>
+                </p>
+            </form>
+
+            <!-- SIGNUP FORM -->
+            <form id="signupForm" style="display:none;flex-direction:column;gap:14px;">
+                <div>
+                    <label class="auth-label" for="signupName">Full Name</label>
+                    <input id="signupName" type="text" required class="auth-input" placeholder="Doe John">
+                </div>
+                <div>
+                    <label class="auth-label" for="signupEmail">Email</label>
+                    <input id="signupEmail" type="email" required class="auth-input" placeholder="email@example.com">
+                </div>
+                <label class="auth-label" for="signupPassword">Password</label>
+                <div class="input-wrapper">
+                    <input id="signupPassword" type="password" required class="auth-input" placeholder="Password" style="padding-right:38px;">
+                    <button type="button" class="toggle-pw" onclick="togglePw('signupPassword',this)" tabindex="-1">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <button type="submit" class="btn-signin" style="background:#166534;">Create Account</button>
+                <p class="register-text">
+                    Already have an account? <a href="#" onclick="toggleAuth(false)">Log In</a>
+                </p>
+            </form>
         </div>
     </div>
 
-    <script>
-        /** 1. Toggle between Login and Signup forms */
-        function toggleAuth(isSignup) {
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            const title = document.getElementById('auth-title');
-            const subtitle = document.getElementById('auth-subtitle');
+    <!-- ============================================================
+         MAIN DASHBOARD LAYOUT (RegTech Design)
+         ============================================================ -->
+    <div id="main-app" class="app-container hidden">
+        
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <span class="logo-text">RegTech</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item" onclick="switchView('dashboard')">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" onclick="switchView('bins')">
+                    <i class="fas fa-boxes-stacked"></i> Bins
+                </a>
+                <a href="#" class="nav-item active" onclick="switchView('list')">
+                    <i class="fas fa-file-lines"></i> Documents
+                </a>
+                <a href="#" class="nav-item" onclick="switchView('users')">
+                    <i class="fas fa-user-group"></i> Users
+                </a>
+                <a href="#" class="nav-item" onclick="switchView('tasks')">
+                    <i class="fas fa-bolt-lightning"></i> Tasks
+                </a>
+            </nav>
 
-            if (isSignup) {
-                loginForm.classList.add('hidden');
-                signupForm.classList.remove('hidden');
-                title.innerText = "Join the Archive";
-                subtitle.innerText = "Start organizing your chaos today";
+            <div style="padding: 24px; margin-top: auto;">
+                <button onclick="handleLogout()" class="nav-item" style="width:100%; border:none; background:transparent;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-nav">
+                <div class="breadcrumb">
+                    <i class="fas fa-chevron-left"></i>
+                    <a href="#" onclick="switchView('bins')">Back To Bins</a>
+                    <div class="search-bar ml-8" style="margin-left: 32px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchQuery" placeholder="Search Documents..." onkeyup="handleSearch()">
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <button class="btn-select">
+                        <i class="far fa-file"></i> Select Documents
+                    </button>
+                    <div class="user-profiles">
+                        <img src="https://ui-avatars.com/api/?name=JD&background=f04438&color=fff" class="user-avatar" alt="User">
+                        <img src="https://ui-avatars.com/api/?name=SM&background=2563eb&color=fff" class="user-avatar" alt="User">
+                        <div class="user-avatar avatar-more">+5</div>
+                    </div>
+                    <button class="btn-select" style="padding: 8px; border-radius: 8px;">
+                        <i class="fas fa-gear"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Title -->
+            <div class="dashboard-header">
+                <div class="page-title">
+                    <i class="fas fa-folder"></i>
+                    <span id="currentViewTitle">Inventory</span>
+                    <i class="fas fa-chevron-down" style="font-size: 0.8rem; margin-left: 8px; color: var(--text-muted);"></i>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn-secondary">
+                        <i class="fas fa-filter"></i> Filter By
+                    </button>
+                    <button class="btn-primary" onclick="openAddItemModal()">
+                        <i class="fas fa-arrow-up-from-bracket"></i> Upload Doc
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-content hidden">
+                <div class="stats-grid">
+                    <!-- Total Books -->
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <div class="stats-icon" style="background: #e0f2fe; color: #0ea5e9;">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            <span>Total Books</span>
+                        </div>
+                        <div class="stats-body">
+                            <div>
+                                <div class="stats-number" id="dashTotalBooks">0</div>
+                                <div class="stats-label">In collection</div>
+                            </div>
+                            <div class="stats-trend">
+                                <div class="trend-value trend-up"><i class="fas fa-arrow-trend-up"></i> +120</div>
+                                <div class="trend-period">Since last month</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Total Tags -->
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <div class="stats-icon" style="background: #f0fdf4; color: #22c55e;">
+                                <i class="fas fa-tags"></i>
+                            </div>
+                            <span>Total Categories</span>
+                        </div>
+                        <div class="stats-body">
+                            <div>
+                                <div class="stats-number" id="dashTotalTags">0</div>
+                                <div class="stats-label">Active tags</div>
+                            </div>
+                            <div class="stats-trend">
+                                <div class="trend-value trend-up"><i class="fas fa-arrow-trend-up"></i> +3.7%</div>
+                                <div class="trend-period">Since last month</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Total Bins -->
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <div class="stats-icon" style="background: #fff1f2; color: #f43f5e;">
+                                <i class="fas fa-boxes-stacked"></i>
+                            </div>
+                            <span>Storage Bins</span>
+                        </div>
+                        <div class="stats-body">
+                            <div>
+                                <div class="stats-number" id="dashTotalBins">4</div>
+                                <div class="stats-label">Assigned bins</div>
+                            </div>
+                            <div class="stats-trend">
+                                <div class="trend-value trend-up"><i class="fas fa-arrow-trend-up"></i> +25%</div>
+                                <div class="trend-period">Since last month</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Recent Activity -->
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <div class="stats-icon" style="background: #fefce8; color: #eab308;">
+                                <i class="fas fa-clock-rotate-left"></i>
+                            </div>
+                            <span>Recent Items</span>
+                        </div>
+                        <div class="stats-body">
+                            <div>
+                                <div class="stats-number" id="dashRecentItems">0</div>
+                                <div class="stats-label">Added this week</div>
+                            </div>
+                            <div class="stats-trend">
+                                <div class="trend-value trend-down"><i class="fas fa-arrow-trend-down"></i> -5.8%</div>
+                                <div class="trend-period">Since last month</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Most Borrowed Categories (Tags) -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <span class="chart-title">Most Borrowed Categories</span>
+                        <div style="font-size: 0.9rem; color: var(--text-muted); cursor: pointer;">
+                            This week <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div class="chart-content">
+                        <div class="chart-viz">
+                            <svg class="donut-svg" width="200" height="200" id="dashDonutChart">
+                                <!-- Donut segments will be injected here -->
+                            </svg>
+                            <div class="chart-center">
+                                <div class="center-label" id="donutCenterIcon"><i class="fas fa-leaf"></i></div>
+                                <div class="center-val" id="donutCenterText">Fiction</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);" id="donutCenterSub">35% - 1,677 Books</div>
+                            </div>
+                        </div>
+                        <div class="category-list" id="dashCategoryList">
+                            <!-- Category items will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div id="view-list" class="view-content hidden">
+                <div class="flex items-center gap-4 mb-6">
+                    <span style="font-weight: 600; color: var(--text-main);">All Tags</span>
+                    <span id="itemCount" style="color: var(--text-muted); font-size: 0.9rem;">0 Documents</span>
+                </div>
+                <div id="inventoryList" class="item-grid fade-in"></div>
+            </div>
+
+            <div id="view-bins" class="view-content hidden">
+                <h2 class="text-xl font-bold mb-6">Storage Bins Status</h2>
+                <div id="binStatus" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside class="right-sidebar">
+            <div class="section-title">
+                <span># Tags</span>
+                <span class="badge-update" id="totalUpdates">0 Updates</span>
+            </div>
+            <div id="tagList" class="tag-list"></div>
+            <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn-secondary" style="justify-content: center; width: 100%;" onclick="openAddItemModal()">
+                    <i class="fas fa-plus"></i> Create New Tag
+                </button>
+                <button class="btn-primary" style="justify-content: center; width: 100%;" onclick="openAddItemModal()">
+                    <i class="fas fa-plus"></i> Add Tag
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal -->
+    <div id="addItemModal" class="modal-overlay hidden">
+        <div class="modal-content animate-fade-in">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New Document</h3>
+                <button onclick="closeAddItemModal()" style="background:none; border:none; font-size: 1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <form id="addItemForm">
+                <div class="form-group">
+                    <label class="form-label">Document Name</label>
+                    <input type="text" id="itemName" class="form-input" placeholder="e.g. Income Statement" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tags (comma separated)</label>
+                    <input type="text" id="itemTags" class="form-input" placeholder="e.g. finance, urgent">
+                </div>
+                <div style="padding: 16px; background-color: var(--primary-light); border-radius: 8px; margin-bottom: 24px;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">Automatically assigned bin:</span>
+                    <div id="nextBinDisplay" style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">Bin-A</div>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
+                    Add to Inventory
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="messageBox" class="hidden"></div>
+
+    <!-- Scripts -->
+    <script>
+        /* =====================================================
+           AUTH HELPERS (Restored)
+           ===================================================== */
+        function togglePw(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon  = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
-                signupForm.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-                title.innerText = "Welcome Back";
-                subtitle.innerText = "Log in to manage your archive";
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
         }
 
-        /** 2. Handle Login Form Submission */
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
+        function toggleAuth(isSignup) {
+            const loginForm  = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            if (isSignup) {
+                loginForm.style.display  = 'none';
+                signupForm.style.display = 'flex';
+            } else {
+                signupForm.style.display = 'none';
+                loginForm.style.display  = 'flex';
+            }
+        }
+
+        ['loginForm', 'googleLogin', 'facebookLogin', 'signupForm'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener(el.tagName === 'FORM' ? 'submit' : 'click', handleLogin);
         });
 
-        /** 3. Handle Logout */
+        function handleLogin(e) {
+            if (e) e.preventDefault();
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('main-app').classList.remove('hidden');
+        }
+
         function handleLogout() {
             document.getElementById('main-app').classList.add('hidden');
-            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('auth-section').style.display = 'flex';
         }
 
-        /** 4. Switch Inventory Views (List/Add/Find) */
-        function switchView(viewName) {
-            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
-            document.getElementById(`view-${viewName}`).classList.remove('hidden');
-            
-            const tabs = ['list', 'add', 'find'];
-            const colors = { list: 'bg-green-600', add: 'bg-purple-600', find: 'bg-blue-600' };
+        function openAddItemModal() { document.getElementById('addItemModal').classList.remove('hidden'); }
+        function closeAddItemModal() { document.getElementById('addItemModal').classList.add('hidden'); }
 
-            tabs.forEach(tab => {
-                const btn = document.getElementById(`tab-${tab}`);
-                btn.className = "flex-1 py-3 px-4 rounded-md font-medium transition flex items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200";
-            });
-            
-            const activeTab = document.getElementById(`tab-${viewName}`);
-            activeTab.classList.remove('bg-gray-100', 'text-gray-700');
-            activeTab.classList.add(colors[viewName], 'text-white');
-        }
-
-        /** 5. Search Placeholder */
-        function handleSearch() {
-            console.log("Searching...");
-        }
+        /** FLOATING BOOKS (Original Logic) */
+        (function spawnBooks() {
+            const layer = document.getElementById('booksLayer');
+            if (!layer) return;
+            const TOTAL = 48;
+            for (let i = 0; i < TOTAL; i++) {
+                const book = document.createElement('div');
+                book.classList.add('book');
+                const w = 34 + Math.random() * 26;
+                const h = w * (1.3 + Math.random() * 0.4);
+                const startX = Math.random() * 100;
+                const startY = Math.random() * 100;
+                const dist = 30 + Math.random() * 40;
+                const angle = 270 + Math.random() * 90;
+                const rad = (angle * Math.PI) / 180;
+                const tx = (dist * Math.cos(rad)).toFixed(1) + 'vw';
+                const ty = (dist * Math.sin(rad) * 0.4).toFixed(1) + 'vh';
+                const opacity = (0.20 + Math.random() * 0.35).toFixed(2);
+                const dur = (12 + Math.random() * 18).toFixed(1);
+                const delay = (Math.random() * -30).toFixed(1);
+                const rotS = (-20 + Math.random() * 40).toFixed(1);
+                const rotE = (parseInt(rotS) + (-30 + Math.random() * 60)).toFixed(1);
+                Object.assign(book.style, {
+                    width: w + 'px', height: h + 'px', left: startX + 'vw', top: startY + 'vh',
+                    color: '#ffffff', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))',
+                    '--rot-start': rotS + 'deg', '--rot-end': rotE + 'deg', '--tx': tx, '--ty': ty,
+                    '--book-opacity': opacity, animationDuration: dur + 's', animationDelay: delay + 's'
+                });
+                const ic = document.createElement('i');
+                ic.className = 'fas fa-book-open';
+                book.appendChild(ic);
+                layer.appendChild(book);
+            }
+        })();
     </script>
-
+    
     <script src="src/js/main.js"></script>
-    <script src="src/js/components/book_manager.js"></script>
-    <script src="src/js/components/inventory_tracker.js"></script>
     <script src="src/js/components/reports.js"></script>
 </body>
 </html>

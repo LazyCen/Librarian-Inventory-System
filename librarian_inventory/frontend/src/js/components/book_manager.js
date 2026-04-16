@@ -10,7 +10,7 @@
 class BookManager {
     constructor() {
         this.items = {}; // Local reference to inventory items
-        console.log('📚 BookManager initialized');
+        console.log(' BookManager initialized');
     }
 
     /**
@@ -44,7 +44,7 @@ class BookManager {
             dateAdded: new Date().toISOString()
         };
 
-        console.log(`📖 Book added: ${name} in ${bin}`);
+        console.log(`Book added: ${name} in ${bin}`);
 
         return {
             success: true,
@@ -91,7 +91,7 @@ class BookManager {
             dateModified: new Date().toISOString()
         };
 
-        console.log(`✏️ Book updated: ${name}`);
+        console.log(`Book updated: ${name}`);
 
         return {
             success: true,
@@ -116,7 +116,7 @@ class BookManager {
         // Remove the item
         delete this.items[name];
 
-        console.log(`🗑️ Book deleted: ${name}`);
+        console.log(`Book deleted: ${name}`);
 
         return {
             success: true,
@@ -151,7 +151,7 @@ class BookManager {
             }
         }
 
-        console.log(`🔍 Search for "${query}" returned ${results.length} results`);
+        console.log(`Search for "${query}" returned ${results.length} results`);
 
         return results;
     }
@@ -204,14 +204,14 @@ class BookManager {
             const data = JSON.parse(jsonData);
             this.items = data;
 
-            console.log('📥 Data imported successfully');
+            console.log('Data imported successfully');
 
             return {
                 success: true,
                 message: 'Data imported successfully'
             };
         } catch (error) {
-            console.error('❌ Import error:', error);
+            console.error('Import error:', error);
 
             return {
                 success: false,
@@ -224,4 +224,4 @@ class BookManager {
 // Create a global instance of BookManager
 const bookManager = new BookManager();
 
-console.log('📄 book_manager.js loaded successfully');
+console.log('book_manager.js loaded successfully');

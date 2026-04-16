@@ -12,7 +12,7 @@ class InventoryTracker {
         this.bins = ["Bin-A", "Bin-B", "Bin-C", "Bin-D"];
         this.currentPointer = 0;
         this.history = []; // Track all inventory changes
-        console.log('📊 InventoryTracker initialized');
+        console.log('InventoryTracker initialized');
     }
 
     /**
@@ -29,7 +29,7 @@ class InventoryTracker {
      */
     advanceBinPointer() {
         this.currentPointer = (this.currentPointer + 1) % this.bins.length;
-        console.log(`📍 Bin pointer advanced to: ${this.bins[this.currentPointer]}`);
+        console.log(`Bin pointer advanced to: ${this.bins[this.currentPointer]}`);
     }
 
     /**
@@ -47,7 +47,7 @@ class InventoryTracker {
     setPointer(position) {
         if (position >= 0 && position < this.bins.length) {
             this.currentPointer = position;
-            console.log(`📍 Bin pointer set to: ${this.bins[this.currentPointer]}`);
+            console.log(`Bin pointer set to: ${this.bins[this.currentPointer]}`);
         }
     }
 
@@ -90,7 +90,7 @@ class InventoryTracker {
             }
         }
 
-        console.log('📊 Bin distribution:', distribution);
+        console.log('Bin distribution:', distribution);
 
         return distribution;
     }
@@ -141,7 +141,7 @@ class InventoryTracker {
                 : 'Consider redistributing items for better balance'
         };
 
-        console.log('⚖️ Balance check:', analysis);
+        console.log('Balance check:', analysis);
 
         return analysis;
     }
@@ -167,7 +167,7 @@ class InventoryTracker {
             this.history.shift();
         }
 
-        console.log(`📝 Action logged: ${action} - ${itemName}`);
+        console.log(`Action logged: ${action} - ${itemName}`);
     }
 
     /**
@@ -184,7 +184,7 @@ class InventoryTracker {
      */
     clearHistory() {
         this.history = [];
-        console.log('🧹 History cleared');
+        console.log('History cleared');
     }
 
     /**
@@ -206,7 +206,7 @@ class InventoryTracker {
             }
         }
 
-        console.log(`📉 Least used bin: ${leastUsedBin} with ${minCount} items`);
+        console.log(`Least used bin: ${leastUsedBin} with ${minCount} items`);
 
         return leastUsedBin;
     }
@@ -232,7 +232,7 @@ class InventoryTracker {
             binsAvailable: this.bins.length
         };
 
-        console.log('📋 Tracking report generated');
+        console.log('Tracking report generated');
 
         return report;
     }
@@ -241,4 +241,4 @@ class InventoryTracker {
 // Create a global instance of InventoryTracker
 const inventoryTracker = new InventoryTracker();
 
-console.log('📄 inventory_tracker.js loaded successfully');
+console.log('inventory_tracker.js loaded successfully');

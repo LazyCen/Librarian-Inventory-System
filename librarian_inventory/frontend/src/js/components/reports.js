@@ -10,7 +10,7 @@
 class ReportGenerator {
     constructor() {
         this.reportTypes = ['summary', 'detailed', 'bins', 'tags'];
-        console.log('📈 ReportGenerator initialized');
+        console.log('ReportGenerator initialized');
     }
 
     /**
@@ -43,7 +43,7 @@ class ReportGenerator {
             }
         };
 
-        console.log('📊 Summary report generated:', report.metrics);
+        console.log('Summary report generated:', report.metrics);
 
         return report;
     }
@@ -73,7 +73,7 @@ class ReportGenerator {
             items: itemDetails
         };
 
-        console.log(`📋 Detailed report generated with ${items.length} items`);
+        console.log(`Detailed report generated with ${items.length} items`);
 
         return report;
     }
@@ -125,7 +125,7 @@ class ReportGenerator {
             leastUsed: sortedBins[sortedBins.length - 1] ? sortedBins[sortedBins.length - 1][0] : null
         };
 
-        console.log('📦 Bin report generated:', report);
+        console.log('Bin report generated:', report);
 
         return report;
     }
@@ -172,7 +172,7 @@ class ReportGenerator {
             leastCommonTag: sortedTags[sortedTags.length - 1] || null
         };
 
-        console.log('🏷️ Tag report generated with', sortedTags.length, 'unique tags');
+        console.log('Tag report generated with', sortedTags.length, 'unique tags');
 
         return report;
     }
@@ -220,7 +220,7 @@ class ReportGenerator {
         link.click();
         document.body.removeChild(link);
 
-        console.log(`📥 Report exported as ${filename}`);
+        console.log(`Report exported as ${filename}`);
     }
 
     /**
@@ -252,7 +252,7 @@ class ReportGenerator {
         link.click();
         document.body.removeChild(link);
 
-        console.log(`📥 Report exported as ${filename}`);
+        console.log(`Report exported as ${filename}`);
     }
 
     /**
@@ -271,7 +271,7 @@ class ReportGenerator {
      * @returns {Object} Object containing all report types
      */
     generateAllReports(inventory, bins) {
-        console.log('📊 Generating all reports...');
+        console.log('Generating all reports...');
 
         const reports = {
             summary: this.generateSummaryReport(inventory),
@@ -280,7 +280,7 @@ class ReportGenerator {
             tags: this.generateTagReport(inventory)
         };
 
-        console.log('✅ All reports generated successfully');
+        console.log('All reports generated successfully');
 
         return reports;
     }
@@ -289,4 +289,4 @@ class ReportGenerator {
 // Create a global instance of ReportGenerator
 const reportGenerator = new ReportGenerator();
 
-console.log('📄 reports.js loaded successfully');
+console.log('reports.js loaded successfully');
