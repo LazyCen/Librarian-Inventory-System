@@ -36,8 +36,8 @@
 }
 
 /* ============================================================
-   FLOATING BOOKS — 10 O'CLOCK STREAM
-   ============================================================ */
+  FLOATING BOOKS — 1 O'CLOCK STREAM
+  ============================================================ */
 .books-layer {
     position: fixed;
     inset: 0;
@@ -53,25 +53,26 @@
     justify-content: center;
     animation: floatBook linear infinite;
     opacity: 0;
+    will-change: transform, opacity;
 }
 
 /* Book icon */
 .book i {
-    font-size: 100%; /* Will scale with book width/height */
+    font-size: 1.45rem;
     position: relative;
     z-index: 1;
 }
 
-/* Each book drifts from bottom-right area toward top-left (10 o'clock = ~300deg) */
+/* Each book drifts toward top-right (1 o'clock = ~300deg in CSS translation) */
 @keyframes floatBook {
     0% {
-        transform: translate(0, 0) rotate(var(--rot-start)) scale(0.8);
+        transform: translate(0, 0) rotate(var(--rot-start)) scale(0.9);
         opacity: 0;
     }
-    8% { opacity: var(--book-opacity); }
-    85% { opacity: var(--book-opacity); }
+    12% { opacity: var(--book-opacity); }
+    92% { opacity: var(--book-opacity); }
     100% {
-        transform: translate(var(--tx), var(--ty)) rotate(var(--rot-end)) scale(1.05);
+        transform: translate(var(--tx), var(--ty)) rotate(var(--rot-end)) scale(1.02);
         opacity: 0;
     }
 }
@@ -303,6 +304,27 @@
     text-decoration: none;
 }
 .register-text a:hover { text-decoration: underline; }
+
+.auth-notice {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.auth-notice.error {
+    background: rgba(248, 113, 113, 0.18);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    color: #fecaca;
+}
+
+.auth-notice.success {
+    background: rgba(74, 222, 128, 0.18);
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    color: #bbf7d0;
+}
 
 /* ============================================================
    UTILITY

@@ -1,5 +1,5 @@
 {
-  "name": "chaos-librarian-inventory",
+  "name": "librarian-inventory-system",
   "version": "1.0.0",
   "description": "A chaos librarian inventory management system with intelligent bin rotation",
   "main": "index.html",
@@ -14,6 +14,6 @@
     "frontend",
     "vanilla-js"
   ],
-  "author": "Chaos Librarian Team",
+  "author": "Jhon Vincent Sosa and  Sian Ogalesco",
   "license": "MIT"
 }

@@ -20,7 +20,7 @@
     <style>
         body { font-family: 'Inter', sans-serif; height: 100vh; margin: 0; }
         #auth-section {
-            background: #2563eb;
+            background: #0f2a43;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -117,6 +117,7 @@
                     Already have an account? <a href="#" onclick="toggleAuth(false)">Log In</a>
                 </p>
             </form>
+            <div id="authNotice" class="auth-notice hidden"></div>
         </div>
     </div>  
 
@@ -129,20 +130,20 @@
         <aside class="sidebar">
             <div class="sidebar-logo">
                 <div class="logo-icon">
-                    <i class="fas fa-book"></i>
+                    <i class="fas fa-book-open"></i>
                 </div>
-                <span class="logo-text">City Library</span>
+                <span class="logo-text">Librarian Inventory System</span>
             </div>
             
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item" data-view="dashboard" onclick="switchView('dashboard')">
-                    <i class="fas fa-th-large"></i> Overview
+                    <i class="fas fa-th-large"></i> Dashboard
                 </a>
                 <a href="#" class="nav-item" data-view="bins" onclick="switchView('bins')">
-                    <i class="fas fa-boxes-stacked"></i> Shelves
+                    <i class="fas fa-boxes-stacked"></i> Bins
                 </a>
                 <a href="#" class="nav-item" data-view="list" onclick="switchView('list')">
-                    <i class="fas fa-table-list"></i> Catalog
+                    <i class="fas fa-table-list"></i> Documents
                 </a>
             </nav>
 
@@ -205,10 +206,6 @@
                                 <div class="stats-number" id="dashTotalBooks">0</div>
                                 <div class="stats-label">In collection</div>
                             </div>
-                            <div class="stats-trend">
-                                <div class="trend-value trend-up"><i class="fas fa-arrow-trend-up"></i> +120</div>
-                                <div class="trend-period">Since last month</div>
-                            </div>
                         </div>
                     </div>
                     <!-- Total Tags -->
@@ -224,10 +221,7 @@
                                 <div class="stats-number" id="dashTotalTags">0</div>
                                 <div class="stats-label">Active tags</div>
                             </div>
-                            <div class="stats-trend">
-                                <div class="trend-value trend-up"><i class="fas fa-arrow-trend-up"></i> +3.7%</div>
-                                <div class="trend-period">Since last month</div>
-                            </div>
+                            
                         </div>
                     </div>
                     <!-- Total Bins -->
@@ -243,10 +237,7 @@
                                 <div class="stats-number" id="dashTotalBins">4</div>
                                 <div class="stats-label">Shelf bins</div>
                             </div>
-                            <div class="stats-trend">
-                                <div class="trend-value trend-up"><i class="fas fa-arrow-trend-up"></i> +25%</div>
-                                <div class="trend-period">Since last month</div>
-                            </div>
+                            
                         </div>
                     </div>
                     <!-- Recent Activity -->
@@ -262,10 +253,7 @@
                                 <div class="stats-number" id="dashRecentItems">0</div>
                                 <div class="stats-label">Added this week</div>
                             </div>
-                            <div class="stats-trend">
-                                <div class="trend-value trend-down"><i class="fas fa-arrow-trend-down"></i> -5.8%</div>
-                                <div class="trend-period">Since last month</div>
-                            </div>
+                           
                         </div>
                     </div>
                 </div>
@@ -314,9 +302,6 @@
                     <span id="itemCount" style="color: var(--text-muted); font-size: 0.9rem;">0 Titles</span>
                 </div>
                 <div class="list-toolbar">
-                    <button class="btn-secondary" onclick="resetFilters()">
-                        <i class="fas fa-rotate-left"></i> Clear Search
-                    </button>
                     <button class="btn-secondary" onclick="switchView('dashboard')">
                         <i class="fas fa-chart-pie"></i> Back to Overview
                     </button>
@@ -325,8 +310,8 @@
             </div>
 
             <div id="view-bins" class="view-content hidden">
-                <h2 class="text-xl font-bold mb-6">Shelf Bin Status</h2>
-                <div id="binStatus" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+                <h2 class="bins-title">Shelf Bin Status</h2>
+                <div id="binStatus" class="bins-grid"></div>
             </div>
         </main>
 
@@ -342,6 +327,23 @@
                     <i class="fas fa-plus"></i> Register Book
                 </button>
             </div>
+
+            <!-- ====================================================
+                 USERS PANEL
+                 Shows all registered users with live online/offline
+                 status. Updated automatically on login / logout.
+                 ==================================================== -->
+            <div class="users-panel-wrap">
+                <div class="users-panel-header">
+                    <span class="users-panel-title">
+                        <i class="fas fa-users"></i> Users
+                    </span>
+                    <span class="users-count-badge" id="usersOnlineCount">All Offline</span>
+                </div>
+                <div id="usersList">
+                    <!-- Populated by src/js/utils/users.js -->
+                </div>
+            </div>
         </aside>
     </div>
 
@@ -349,7 +351,7 @@
     <div id="addItemModal" class="modal-overlay hidden">
         <div class="modal-content animate-fade-in">
             <div class="modal-header">
-                <h3 class="modal-title">Add New Document</h3>
+                <h3 id="itemModalTitle" class="modal-title">Add New Document</h3>
                 <button onclick="closeAddItemModal()" style="background:none; border:none; font-size: 1.5rem; cursor:pointer;">&times;</button>
             </div>
             <form id="addItemForm">
@@ -365,10 +367,24 @@
                     <span style="font-size: 0.85rem; color: var(--text-secondary);">Automatically assigned shelf bin:</span>
                     <div id="nextBinDisplay" style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">Bin-A</div>
                 </div>
-                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
+                <button id="itemSubmitBtn" type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
                     Add to Catalog
                 </button>
             </form>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="confirm-overlay hidden">
+        <div class="confirm-card animate-fade-in">
+            <div class="confirm-icon-wrap">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="confirm-title">Confirm Delete</h3>
+            <p id="confirmMessage" class="confirm-message">Are you sure you want to continue?</p>
+            <div class="confirm-actions">
+                <button type="button" class="confirm-btn cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button type="button" class="confirm-btn danger" onclick="confirmModalAccept()">Delete Book</button>
+            </div>
         </div>
     </div>
 
@@ -378,6 +394,7 @@
     <!-- Utility Scripts -->
     <script src="src/js/utils/togglePw.js"></script>
     <script src="src/js/utils/toggleAuth.js"></script>
+    <script src="src/js/utils/users.js"></script>
     <script src="src/js/utils/handleLogin.js"></script>
     <script src="src/js/utils/handleLogout.js"></script>
     <script src="src/js/utils/openAddItemModal.js"></script>

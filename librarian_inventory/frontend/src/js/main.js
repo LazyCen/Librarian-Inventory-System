@@ -12,6 +12,8 @@ let currentQuery = '';
 let activeTagFilter = '';
 let activeBinFilter = '';
 let sortMode = 'newest';
+let editingItemName = null;
+let pendingConfirmAction = null;
 
 /**
  * Initialize the application when DOM is fully loaded
@@ -38,8 +40,21 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !document.getElementById('addItemModal')?.classList.contains('hidden')) {
             closeAddItemModal();
+            return;
+        }
+        if (event.key === 'Escape' && !document.getElementById('confirmModal')?.classList.contains('hidden')) {
+            closeConfirmModal();
         }
     });
+
+    const confirmOverlay = document.getElementById('confirmModal');
+    if (confirmOverlay) {
+        confirmOverlay.addEventListener('click', (event) => {
+            if (event.target === confirmOverlay) {
+                closeConfirmModal();
+            }
+        });
+    }
 
     console.log('Application ready');
 });
@@ -121,6 +136,9 @@ function switchView(view) {
 
     // Update next bin display
     updateNextBinDisplay();
+
+    // Refresh users panel status
+    if (typeof renderUsersPanel === 'function') renderUsersPanel();
 }
 
 /**
@@ -224,6 +242,29 @@ function updateNextBinDisplay() {
     }
 }
 
+function setItemFormMode(mode = 'add', itemName = '') {
+    const modalTitle = document.getElementById('itemModalTitle');
+    const submitBtn = document.getElementById('itemSubmitBtn');
+    const nextBinLabel = document.getElementById('nextBinDisplay');
+
+    const isEditMode = mode === 'edit';
+    editingItemName = isEditMode ? itemName : null;
+
+    if (modalTitle) {
+        modalTitle.textContent = isEditMode ? 'Update Book' : 'Add New Document';
+    }
+
+    if (submitBtn) {
+        submitBtn.innerHTML = isEditMode
+            ? '<i class="fas fa-pen"></i> Save Changes'
+            : 'Add to Catalog';
+    }
+
+    if (nextBinLabel) {
+        nextBinLabel.textContent = isEditMode ? inventory[itemName]?.bin || '-' : bins[binPointer];
+    }
+}
+
 function showMessage(message, type = 'info', duration = 3000) {
     const messageBox = document.getElementById('messageBox');
     if (!messageBox) return;
@@ -237,6 +278,30 @@ function showMessage(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
+function openConfirmModal(message, onConfirm) {
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmMessage = document.getElementById('confirmMessage');
+    if (!confirmModal || !confirmMessage) return;
+    confirmMessage.innerText = message;
+    pendingConfirmAction = typeof onConfirm === 'function' ? onConfirm : null;
+    confirmModal.classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+    const confirmModal = document.getElementById('confirmModal');
+    if (!confirmModal) return;
+    confirmModal.classList.add('hidden');
+    pendingConfirmAction = null;
+}
+
+function confirmModalAccept() {
+    const action = pendingConfirmAction;
+    closeConfirmModal();
+    if (typeof action === 'function') {
+        action();
+    }
+}
+
 function handleAddItem(e) {
     e.preventDefault();
 
@@ -248,26 +313,48 @@ function handleAddItem(e) {
         return;
     }
 
-    if (inventory[itemName]) {
+    if (!editingItemName && inventory[itemName]) {
         showMessage('Title already exists in catalog', 'error');
         return;
     }
 
-    const assignedBin = bins[binPointer];
     const parsedTags = itemTags
         .split(',')
         .map(tag => tag.trim().toLowerCase())
         .filter(tag => tag.length > 0);
 
-    inventory[itemName] = {
-        bin: assignedBin,
-        tags: parsedTags,
-        dateAdded: new Date().toISOString()
-    };
+    if (editingItemName) {
+        if (itemName !== editingItemName && inventory[itemName]) {
+            showMessage('Another title already uses that name', 'error');
+            return;
+        }
 
-    binPointer = (binPointer + 1) % bins.length;
+        const existingData = inventory[editingItemName];
+        if (!existingData) {
+            showMessage('Original title not found', 'error');
+            setItemFormMode('add');
+            return;
+        }
+
+        delete inventory[editingItemName];
+        inventory[itemName] = {
+            ...existingData,
+            tags: parsedTags
+        };
+        showMessage(`Updated "${itemName}"`, 'success');
+    } else {
+        const assignedBin = bins[binPointer];
+        inventory[itemName] = {
+            bin: assignedBin,
+            tags: parsedTags,
+            dateAdded: new Date().toISOString()
+        };
+        binPointer = (binPointer + 1) % bins.length;
+        showMessage(`Catalog updated: '${itemName}' assigned to ${assignedBin}`, 'success');
+    }
+
     saveToStorage();
-    showMessage(`Catalog updated: '${itemName}' assigned to ${assignedBin}`, 'success');
+    setItemFormMode('add');
 
     // Clear and close
     document.getElementById('addItemForm').reset();
@@ -318,25 +405,38 @@ function renderListView(itemsToRender = null, query = "") {
     }
 
     container.innerHTML = items.map(([name, details]) => {
-        // Use first tag for the card status or a default
-        const primaryTag = details.tags.length > 0 ? `# ${details.tags[0]}` : '# uncategorized';
+        const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const date = formatDisplayDate(details.dateAdded);
         const categoryCount = details.tags.length;
+        const tagBadges = details.tags.length > 0
+            ? details.tags.slice(0, 3).map((tag) => `<span class="card-side-tag"># ${tag}</span>`).join('')
+            : '<span class="card-side-tag muted"># uncategorized</span>';
         
         return `
             <div class="item-card">
-                <div class="card-options" onclick="deleteItem('${name}')">
-                    <i class="fas fa-ellipsis-v"></i>
+                <div class="card-options" onclick="openEditItemModal('${safeName}')">
+                    <i class="fas fa-pen"></i>
                 </div>
                 <div class="card-icon">BK</div>
                 <div class="card-updates">Catalog record</div>
                 <h4 class="card-title">${name}</h4>
-                <div class="card-meta"><i class="far fa-calendar"></i> Added ${date}</div>
-                <div class="card-meta"><i class="fas fa-box"></i> Shelf ${details.bin}</div>
-                <div class="card-meta"><i class="fas fa-tags"></i> ${categoryCount} categories</div>
-                <div class="card-tag">${primaryTag}</div>
-                <div class="card-details">
-                    Open record <i class="fas fa-arrow-right"></i>
+                <div class="card-body-row">
+                    <div class="card-main-meta">
+                        <div class="card-meta"><i class="far fa-calendar"></i> Added ${date}</div>
+                        <div class="card-meta"><i class="fas fa-box"></i> Shelf ${details.bin}</div>
+                        <div class="card-meta"><i class="fas fa-tags"></i> ${categoryCount} categories</div>
+                    </div>
+                    <div class="card-side-tags">
+                        ${tagBadges}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border-color);">
+                    <button class="btn-secondary" style="padding: 8px 10px; font-size: 0.8rem;" onclick="openEditItemModal('${safeName}')">
+                        <i class="fas fa-pen"></i> Update
+                    </button>
+                    <button class="btn-secondary" style="padding: 8px 10px; font-size: 0.8rem; color: #b42318;" onclick="deleteItem('${safeName}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                 </div>
             </div>
         `;
@@ -395,13 +495,32 @@ function filterByTag(tag) {
 }
 
 function deleteItem(itemName) {
-    if (!confirm(`Remove "${itemName}" from the catalog?`)) return;
-    delete inventory[itemName];
-    saveToStorage();
-    renderListView();
-    renderBinStatus();
-    renderTagList();
-    renderDashboardView();
+    openConfirmModal(`Remove "${itemName}" from the catalog?`, () => {
+        delete inventory[itemName];
+        saveToStorage();
+        renderListView();
+        renderBinStatus();
+        renderTagList();
+        renderDashboardView();
+        showMessage(`Removed "${itemName}"`, 'info', 1800);
+    });
+}
+
+function openEditItemModal(itemName) {
+    const itemData = inventory[itemName];
+    if (!itemData) {
+        showMessage('Book not found', 'error');
+        return;
+    }
+
+    const itemNameInput = document.getElementById('itemName');
+    const itemTagsInput = document.getElementById('itemTags');
+    if (!itemNameInput || !itemTagsInput) return;
+
+    setItemFormMode('edit', itemName);
+    itemNameInput.value = itemName;
+    itemTagsInput.value = itemData.tags.join(', ');
+    document.getElementById('addItemModal').classList.remove('hidden');
 }
 
 function renderBinStatus() {
@@ -413,16 +532,18 @@ function renderBinStatus() {
         const isNext = index === binPointer;
 
         return `
-            <div class="item-card ${isNext ? 'active-bin' : ''} clickable" style="gap: 8px;" onclick="filterByBin('${bin}')">
-                <div class="flex justify-between items-center">
-                    <div class="card-icon" style="background:#f0443815; color:#f04438;">${bin.split('-')[1]}</div>
-                    ${isNext ? '<span class="badge-update">NEXT</span>' : ''}
+            <div class="bin-card ${isNext ? 'active-bin' : ''}" onclick="filterByBin('${bin}')">
+                <div class="bin-card-header">
+                    <div class="bin-card-icon">${bin.split('-')[1]}</div>
+                    ${isNext ? '<span class="bin-badge">NEXT</span>' : ''}
                 </div>
                 <h4 class="card-title">${bin}</h4>
                 <div class="card-meta">
                     <i class="fas fa-box"></i> ${itemCount} Titles stored
                 </div>
-                <div class="card-details">View titles</div>
+                <div class="card-details">
+                    View titles <i class="fas fa-arrow-right"></i>
+                </div>
             </div>
         `;
     }).join('');
