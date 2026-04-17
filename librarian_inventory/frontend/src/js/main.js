@@ -7,7 +7,11 @@
 let inventory = {}; // Stores all inventory items
 let bins = ["Bin-A", "Bin-B", "Bin-C", "Bin-D"]; // Available storage bins
 let binPointer = 0; // Points to the next bin to assign
-let currentView = 'list'; // Tracks the active view
+let currentView = 'dashboard'; // Tracks the active view
+let currentQuery = '';
+let activeTagFilter = '';
+let activeBinFilter = '';
+let sortMode = 'newest';
 
 /**
  * Initialize the application when DOM is fully loaded
@@ -22,12 +26,20 @@ document.addEventListener('DOMContentLoaded', function () {
     renderListView();
     renderBinStatus();
     renderTagList();
+    switchView('dashboard');
+    updateFilterButtonLabel();
 
     // Set up form submission handler for adding items
     const addItemForm = document.getElementById('addItemForm');
     if (addItemForm) {
         addItemForm.addEventListener('submit', handleAddItem);
     }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !document.getElementById('addItemModal')?.classList.contains('hidden')) {
+            closeAddItemModal();
+        }
+    });
 
     console.log('Application ready');
 });
@@ -76,18 +88,15 @@ function switchView(view) {
         nav.classList.remove('active');
     });
 
-    // Update sidebar active link (mapping logic)
+    // Update sidebar active link
     const navMapping = {
-        'list': 'Documents',
-        'bins': 'Bins',
-        'dashboard': 'Dashboard',
-        'users': 'Users',
-        'tasks': 'Tasks'
+        list: 'Catalog',
+        bins: 'Shelves',
+        dashboard: 'Overview'
     };
-
-    const activeNavText = navMapping[view];
-    document.querySelectorAll('.nav-item').forEach(nav => {
-        if (nav.innerText.includes(activeNavText)) {
+    const activeNavText = navMapping[view] || 'Inventory';
+    document.querySelectorAll('.nav-item[data-view]').forEach(nav => {
+        if (nav.dataset.view === view) {
             nav.classList.add('active');
         }
     });
@@ -106,7 +115,7 @@ function switchView(view) {
         titleElement.textContent = activeNavText || 'Inventory';
     }
 
-    if (view === 'list') renderListView();
+    if (view === 'list') renderListView(getFilteredEntries(), currentQuery);
     if (view === 'bins') renderBinStatus();
     if (view === 'dashboard') renderDashboardView();
 
@@ -138,7 +147,8 @@ function renderDashboardView() {
     document.getElementById('dashTotalBooks').textContent = totalBooks.toLocaleString();
     document.getElementById('dashTotalTags').textContent = Object.keys(tagCounts).length;
     document.getElementById('dashTotalBins').textContent = bins.length;
-    document.getElementById('dashRecentItems').textContent = Math.floor(totalBooks * 0.15); // Mock recent items as 15%
+    const recentItems = Object.values(inventory).filter(item => isRecentDate(item.dateAdded)).length;
+    document.getElementById('dashRecentItems').textContent = recentItems;
 
     // Render Donut Chart & List
     renderDonutChart(sortedTags, totalTagUsage);
@@ -156,7 +166,9 @@ function renderDonutChart(data, total) {
     list.innerHTML = '';
 
     if (data.length === 0) {
-        list.innerHTML = '<p class="text-gray-400">Add items with tags to see category distribution.</p>';
+        list.innerHTML = '<p class="text-gray-400">Add books with categories to see distribution.</p>';
+        document.getElementById('donutCenterText').textContent = 'No tags yet';
+        document.getElementById('donutCenterSub').textContent = 'Start by adding your first title';
         return;
     }
 
@@ -185,12 +197,12 @@ function renderDonutChart(data, total) {
         // List Item
         const color = colors[i % colors.length];
         list.innerHTML += `
-            <div class="category-item">
+            <div class="category-item clickable" onclick="filterByTag('${tag}')">
                 <div class="category-info">
                     <div class="category-bullet" style="background: ${color}"></div>
                     <div class="category-details">
                         <span class="category-name">${tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
-                        <span class="category-sub">${count.toLocaleString()} Books</span>
+                        <span class="category-sub">${count.toLocaleString()} Titles</span>
                     </div>
                 </div>
                 <div class="category-percent">${percent}%</div>
@@ -200,7 +212,7 @@ function renderDonutChart(data, total) {
         // Update Center text to top category
         if (i === 0) {
             document.getElementById('donutCenterText').textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
-            document.getElementById('donutCenterSub').textContent = `${percent}% - ${count.toLocaleString()} Books`;
+            document.getElementById('donutCenterSub').textContent = `${percent}% - ${count.toLocaleString()} Titles`;
         }
     });
 }
@@ -232,12 +244,12 @@ function handleAddItem(e) {
     const itemTags = document.getElementById('itemTags').value.trim();
 
     if (!itemName) {
-        showMessage('Please enter an item name', 'error');
+        showMessage('Please enter a book title', 'error');
         return;
     }
 
     if (inventory[itemName]) {
-        showMessage('Item already exists in inventory', 'error');
+        showMessage('Title already exists in catalog', 'error');
         return;
     }
 
@@ -250,12 +262,12 @@ function handleAddItem(e) {
     inventory[itemName] = {
         bin: assignedBin,
         tags: parsedTags,
-        dateAdded: new Date().toLocaleDateString('en-GB') // Matches DD.MM.YY style
+        dateAdded: new Date().toISOString()
     };
 
     binPointer = (binPointer + 1) % bins.length;
     saveToStorage();
-    showMessage(`Success! '${itemName}' stored in ${assignedBin}`, 'success');
+    showMessage(`Catalog updated: '${itemName}' assigned to ${assignedBin}`, 'success');
 
     // Clear and close
     document.getElementById('addItemForm').reset();
@@ -265,6 +277,8 @@ function handleAddItem(e) {
     renderListView();
     renderBinStatus();
     renderTagList();
+    renderDashboardView();
+    updateFilterButtonLabel();
 }
 
 /**
@@ -272,14 +286,12 @@ function handleAddItem(e) {
  */
 function handleSearch() {
     const query = document.getElementById('searchQuery').value.trim().toLowerCase();
-    const results = [];
-
-    for (const [name, details] of Object.entries(inventory)) {
-        if (name.toLowerCase().includes(query) || details.tags.some(tag => tag.includes(query))) {
-            results.push([name, details]);
-        }
+    currentQuery = query;
+    const results = getFilteredEntries();
+    if (query && currentView !== 'list') {
+        switchView('list');
+        return;
     }
-
     renderListView(results, query);
 }
 
@@ -292,14 +304,14 @@ function renderListView(itemsToRender = null, query = "") {
     const countElement = document.getElementById('itemCount');
     if (!container) return;
 
-    const items = itemsToRender || Object.entries(inventory);
-    if (countElement) countElement.textContent = `${items.length} Documents`;
+    const items = itemsToRender || getFilteredEntries();
+    if (countElement) countElement.textContent = `${items.length} Titles`;
 
     if (items.length === 0) {
         container.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-muted);">
                 <i class="fas fa-box-open" style="font-size: 3rem; opacity: 0.2; margin-bottom: 16px;"></i>
-                <p>No documents found matching "${query}"</p>
+                <p>No catalog titles found matching "${query}"</p>
             </div>
         `;
         return;
@@ -307,23 +319,24 @@ function renderListView(itemsToRender = null, query = "") {
 
     container.innerHTML = items.map(([name, details]) => {
         // Use first tag for the card status or a default
-        const primaryTag = details.tags.length > 0 ? `# ${details.tags[0]}` : '# Library';
-        const date = details.dateAdded || '17.08.20';
+        const primaryTag = details.tags.length > 0 ? `# ${details.tags[0]}` : '# uncategorized';
+        const date = formatDisplayDate(details.dateAdded);
+        const categoryCount = details.tags.length;
         
         return `
             <div class="item-card">
                 <div class="card-options" onclick="deleteItem('${name}')">
                     <i class="fas fa-ellipsis-v"></i>
                 </div>
-                <div class="card-icon">DOC</div>
-                <div class="card-updates">1 Update</div>
+                <div class="card-icon">BK</div>
+                <div class="card-updates">Catalog record</div>
                 <h4 class="card-title">${name}</h4>
-                <div class="card-meta">
-                    <i class="far fa-calendar"></i> ${date}
-                </div>
+                <div class="card-meta"><i class="far fa-calendar"></i> Added ${date}</div>
+                <div class="card-meta"><i class="fas fa-box"></i> Shelf ${details.bin}</div>
+                <div class="card-meta"><i class="fas fa-tags"></i> ${categoryCount} categories</div>
                 <div class="card-tag">${primaryTag}</div>
                 <div class="card-details">
-                    Details <i class="fas fa-arrow-right"></i>
+                    Open record <i class="fas fa-arrow-right"></i>
                 </div>
             </div>
         `;
@@ -349,16 +362,16 @@ function renderTagList() {
     const tags = Object.keys(tagCounts).sort();
     
     if (totalUpdatesElement) {
-        totalUpdatesElement.textContent = `${tags.length} Active Tags`;
+        totalUpdatesElement.textContent = `${tags.length} Active`;
     }
 
     if (tags.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No tags defined yet.</p>';
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No categories defined yet.</p>';
         return;
     }
 
     container.innerHTML = tags.map(tag => `
-        <div class="tag-item" onclick="filterByTag('${tag}')">
+        <div class="tag-item ${activeTagFilter === tag ? 'active' : ''}" onclick="filterByTag('${tag}')">
             <div class="tag-name-wrapper">
                 <div class="tag-bullet"></div>
                 <span class="tag-name"># ${tag}</span>
@@ -369,20 +382,26 @@ function renderTagList() {
 }
 
 function filterByTag(tag) {
+    activeTagFilter = activeTagFilter === tag ? '' : tag;
+    activeBinFilter = '';
     const queryInput = document.getElementById('searchQuery');
     if (queryInput) {
-        queryInput.value = tag;
-        handleSearch();
+        queryInput.value = activeTagFilter;
+        currentQuery = activeTagFilter;
     }
+    switchView('list');
+    renderListView(getFilteredEntries(), currentQuery);
+    renderTagList();
 }
 
 function deleteItem(itemName) {
-    if (!confirm(`Permanently delete "${itemName}"?`)) return;
+    if (!confirm(`Remove "${itemName}" from the catalog?`)) return;
     delete inventory[itemName];
     saveToStorage();
     renderListView();
     renderBinStatus();
     renderTagList();
+    renderDashboardView();
 }
 
 function renderBinStatus() {
@@ -394,19 +413,138 @@ function renderBinStatus() {
         const isNext = index === binPointer;
 
         return `
-            <div class="item-card ${isNext ? 'active-bin' : ''}" style="gap: 8px;">
+            <div class="item-card ${isNext ? 'active-bin' : ''} clickable" style="gap: 8px;" onclick="filterByBin('${bin}')">
                 <div class="flex justify-between items-center">
                     <div class="card-icon" style="background:#f0443815; color:#f04438;">${bin.split('-')[1]}</div>
                     ${isNext ? '<span class="badge-update">NEXT</span>' : ''}
                 </div>
                 <h4 class="card-title">${bin}</h4>
                 <div class="card-meta">
-                    <i class="fas fa-box"></i> ${itemCount} Items stored
+                    <i class="fas fa-box"></i> ${itemCount} Titles stored
                 </div>
-                <div class="card-details">View Details</div>
+                <div class="card-details">View titles</div>
             </div>
         `;
     }).join('');
+}
+
+function getFilteredEntries() {
+    let entries = Object.entries(inventory);
+    if (currentQuery) {
+        entries = entries.filter(([name, details]) =>
+            name.toLowerCase().includes(currentQuery) ||
+            details.tags.some(tag => tag.includes(currentQuery))
+        );
+    }
+    if (activeTagFilter) {
+        entries = entries.filter(([, details]) => details.tags.includes(activeTagFilter));
+    }
+    if (activeBinFilter) {
+        entries = entries.filter(([, details]) => details.bin === activeBinFilter);
+    }
+    entries = sortEntries(entries);
+    return entries;
+}
+
+function sortEntries(entries) {
+    const sorted = [...entries];
+    if (sortMode === 'name') {
+        sorted.sort((a, b) => a[0].localeCompare(b[0]));
+    } else if (sortMode === 'oldest') {
+        sorted.sort((a, b) => getDateValue(a[1].dateAdded) - getDateValue(b[1].dateAdded));
+    } else {
+        sorted.sort((a, b) => getDateValue(b[1].dateAdded) - getDateValue(a[1].dateAdded));
+    }
+    return sorted;
+}
+
+function cycleSortMode() {
+    const modes = ['newest', 'oldest', 'name'];
+    const currentIndex = modes.indexOf(sortMode);
+    sortMode = modes[(currentIndex + 1) % modes.length];
+    updateFilterButtonLabel();
+    renderListView(getFilteredEntries(), currentQuery);
+    showMessage(`Sorted by ${sortMode}`, 'info', 1500);
+}
+
+function updateFilterButtonLabel() {
+    const button = document.getElementById('filterBtn');
+    if (!button) return;
+    const labels = {
+        newest: 'Sort: Newest',
+        oldest: 'Sort: Oldest',
+        name: 'Sort: Name'
+    };
+    button.innerHTML = `<i class="fas fa-filter"></i> ${labels[sortMode]}`;
+}
+
+function resetFilters() {
+    currentQuery = '';
+    activeTagFilter = '';
+    activeBinFilter = '';
+    const queryInput = document.getElementById('searchQuery');
+    if (queryInput) queryInput.value = '';
+    renderTagList();
+    renderListView(getFilteredEntries(), currentQuery);
+}
+
+function showAllItems() {
+    resetFilters();
+    switchView('list');
+}
+
+function focusTopTagFromDashboard() {
+    const tagCounts = {};
+    Object.values(inventory).forEach((item) => {
+        item.tags.forEach((tag) => {
+            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+    });
+    const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!topTag) {
+        showMessage('No tags available yet', 'info');
+        return;
+    }
+    filterByTag(topTag);
+}
+
+function filterRecentItems() {
+    currentQuery = '';
+    activeTagFilter = '';
+    activeBinFilter = '';
+    const recentEntries = Object.entries(inventory).filter(([, details]) => isRecentDate(details.dateAdded));
+    switchView('list');
+    renderListView(sortEntries(recentEntries), 'recent');
+}
+
+function filterByBin(bin) {
+    activeBinFilter = bin;
+    activeTagFilter = '';
+    currentQuery = '';
+    const queryInput = document.getElementById('searchQuery');
+    if (queryInput) queryInput.value = '';
+    switchView('list');
+    renderListView(getFilteredEntries(), '');
+    showMessage(`Showing titles from ${bin}`, 'info', 1500);
+}
+
+function isRecentDate(dateValue) {
+    const addedAt = getDateValue(dateValue);
+    if (!addedAt) return false;
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    return addedAt >= sevenDaysAgo;
+}
+
+function getDateValue(dateValue) {
+    if (!dateValue) return 0;
+    const parsed = Date.parse(dateValue);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function formatDisplayDate(dateValue) {
+    const value = getDateValue(dateValue);
+    if (!value) return 'No date';
+    return new Date(value).toLocaleDateString('en-GB');
 }
 
 console.log('Main Logic Updated for New Dashboard');
