@@ -5,8 +5,8 @@
 
 // Global state variables
 let inventory = {}; // Stores all inventory items
-let bins = ["Bin-A", "Bin-B", "Bin-C", "Bin-D"]; // Available storage bins
-let binPointer = 0; // Points to the next bin to assign
+let bins = ["Added", "Borrowed", "Returned"]; // Available bin statuses
+let binPointer = 0; // Deprecated
 let currentView = 'dashboard'; // Tracks the active view
 let currentQuery = '';
 let activeTagFilter = '';
@@ -89,6 +89,10 @@ function loadFromStorage() {
                     item.borrower = '';
                     migrated = true;
                 }
+                if (item.bin && item.bin.startsWith('Bin-')) {
+                    item.bin = item.isBorrowed ? 'Borrowed' : 'Added';
+                    migrated = true;
+                }
             });
 
             if (migrated) saveToStorage();
@@ -115,6 +119,44 @@ function saveToStorage() {
 }
 
 /**
+ * Calculate multi-dimensional statistics about the current inventory
+ * @returns {Object} { tagCounts: {}, statusCounts: {}, totalBooks: number }
+ */
+function getInventoryStats() {
+    const stats = {
+        tagCounts: {},
+        statusCounts: {
+            'Added': 0,
+            'Borrowed': 0,
+            'Returned': 0
+        },
+        totalBooks: 0
+    };
+
+    const items = Object.values(inventory);
+    stats.totalBooks = items.length;
+
+    items.forEach(item => {
+        // Tag stats
+        if (item.tags && Array.isArray(item.tags)) {
+            item.tags.forEach(tag => {
+                stats.tagCounts[tag] = (stats.tagCounts[tag] || 0) + 1;
+            });
+        }
+
+        // Status stats
+        const bin = item.bin || (item.isBorrowed ? 'Borrowed' : 'Added');
+        if (stats.statusCounts.hasOwnProperty(bin)) {
+            stats.statusCounts[bin]++;
+        } else {
+            stats.statusCounts['Added']++;
+        }
+    });
+
+    return stats;
+}
+
+/**
  * Switch between different views
  * @param {string} view - The view to switch to
  */
@@ -133,10 +175,10 @@ function switchView(view) {
 
     // Update sidebar active link
     const navMapping = {
-        list: 'Catalog',
-        bins: 'Shelves',
-        dashboard: 'Overview',
-        borrowed: 'Borrowed Documents'
+        list: 'Books',
+        bins: 'Bins Status',
+        dashboard: 'Dashboard',
+        borrowed: 'Borrowed Books'
     };
     const activeNavText = navMapping[view] || 'Inventory';
     document.querySelectorAll('.nav-item[data-view]').forEach(nav => {
@@ -185,33 +227,31 @@ function switchView(view) {
  * Render the detailed dashboard view with stats and chart
  */
 function renderDashboardView() {
-    const totalBooks = Object.keys(inventory).length;
+    const stats = getInventoryStats();
+    const totalBooks = stats.totalBooks;
+    const { tagCounts, statusCounts } = stats;
 
-    // Calculate tag frequencies for categories
-    const tagCounts = {};
-    Object.values(inventory).forEach(item => {
-        if (item.tags && Array.isArray(item.tags)) {
-            item.tags.forEach(tag => {
-                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-            });
-        }
-    });
-
-    const sortedTags = Object.entries(tagCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4); // Get top 4 categories
-
-    const totalTagUsage = Object.values(tagCounts).reduce((a, b) => a + b, 0);
+    const statusData = Object.entries(statusCounts).filter(([, count]) => count > 0);
+    const totalTransactions = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
     // Update Stats Cards
-    document.getElementById('dashTotalBooks').textContent = totalBooks.toLocaleString();
-    document.getElementById('dashTotalTags').textContent = Object.keys(tagCounts).length;
-    document.getElementById('dashTotalBins').textContent = bins.length;
-    const recentItems = Object.values(inventory).filter(item => isRecentDate(item.dateAdded)).length;
-    document.getElementById('dashRecentItems').textContent = recentItems;
+    const totalBooksEl = document.getElementById('dashTotalBooks');
+    if (totalBooksEl) totalBooksEl.textContent = totalBooks.toLocaleString();
+
+    const totalTagsEl = document.getElementById('dashTotalTags');
+    if (totalTagsEl) totalTagsEl.textContent = Object.keys(tagCounts).length;
+
+    const totalBinsEl = document.getElementById('dashTotalBins');
+    if (totalBinsEl) totalBinsEl.textContent = bins.length;
+
+    const recentItemsEl = document.getElementById('dashRecentItems');
+    if (recentItemsEl) {
+        const recentCount = Object.values(inventory).filter(item => isRecentDate(item.dateAdded)).length;
+        recentItemsEl.textContent = recentCount;
+    }
 
     // Render Donut Chart & List
-    renderDonutChart(sortedTags, totalTagUsage);
+    renderDonutChart(statusData, totalTransactions);
 
     // Render Dashboard Borrowed List
     renderDashboardBorrowedList();
@@ -235,13 +275,20 @@ function renderDonutChart(data, total) {
         return;
     }
 
-    const colors = ['#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f97316']; // Premium aesthetic sunset/warm gradient
+    const colors = ['#3b82f6', '#22c55e', '#ef4444', '#f97316']; // Blue, Green, Red, Orange
     const radius = 80;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
+    
+    // Icon mapping for center display
+    const statusIcons = {
+        'Added': '<i class="fas fa-circle-plus" style="color: #3b82f6;"></i>',
+        'Borrowed': '<i class="fas fa-hand-holding-hand" style="color: #f59e0b;"></i>',
+        'Returned': '<i class="fas fa-undo" style="color: #10b981;"></i>'
+    };
 
-    data.forEach(([tag, count], i) => {
-        const percent = ((count / total) * 100).toFixed(0);
+    data.forEach(([label, count], i) => {
+        const percent = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
         const dashArray = (count / total) * circumference;
 
         // SVG Segment
@@ -260,11 +307,11 @@ function renderDonutChart(data, total) {
         // List Item
         const color = colors[i % colors.length];
         list.innerHTML += `
-            <div class="category-item clickable" onclick="filterByTag('${tag}')">
+            <div class="category-item clickable" onclick="filterByBin('${label}')">
                 <div class="category-info">
                     <div class="category-bullet" style="background: ${color}"></div>
                     <div class="category-details">
-                        <span class="category-name">${tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
+                        <span class="category-name">${label}</span>
                         <span class="category-sub">${count.toLocaleString()} Titles</span>
                     </div>
                 </div>
@@ -272,9 +319,12 @@ function renderDonutChart(data, total) {
             </div>
         `;
 
-        // Update Center text to top category
+        // Update Center text and icon to top status
         if (i === 0) {
-            document.getElementById('donutCenterText').textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
+            const iconEl = document.getElementById('donutCenterIcon');
+            if (iconEl) iconEl.innerHTML = statusIcons[label] || '<i class="fas fa-arrows-rotate"></i>';
+            
+            document.getElementById('donutCenterText').textContent = label;
             document.getElementById('donutCenterSub').textContent = `${percent}% - ${count.toLocaleString()} Titles`;
         }
     });
@@ -325,26 +375,36 @@ function renderDashboardBorrowedList() {
 }
 
 function updateNextBinDisplay() {
-    const nextBinElement = document.getElementById('nextBinDisplay');
-    if (nextBinElement) {
-        nextBinElement.textContent = bins[binPointer];
-    }
+    // Deprecated for the new Bin selection system
 }
 
 /**
  * Toggles the borrower name field based on whether the borrowed checkbox is checked
  */
 function toggleBorrowerField() {
-    const isBorrowed = document.getElementById('itemIsBorrowed').checked;
-    const group = document.getElementById('borrowerFieldGroup');
-    const input = document.getElementById('itemBorrower');
-
-    if (group) {
+    const select = document.getElementById('itemBinSelection');
+    const isBorrowed = select && select.value === 'Borrowed';
+    const isReturned = select && select.value === 'Returned';
+    
+    const borrowerGroup = document.getElementById('borrowerFieldGroup');
+    const borrowerInput = document.getElementById('itemBorrower');
+    if (borrowerGroup) {
         if (isBorrowed) {
-            group.classList.remove('hidden');
+            borrowerGroup.classList.remove('hidden');
         } else {
-            group.classList.add('hidden');
-            if (input) input.value = ''; // Clear if unchecking
+            borrowerGroup.classList.add('hidden');
+            if (borrowerInput) borrowerInput.value = ''; // Clear if unchecking
+        }
+    }
+    
+    const returnerGroup = document.getElementById('returnerFieldGroup');
+    const returnerInput = document.getElementById('itemReturner');
+    if (returnerGroup) {
+        if (isReturned) {
+            returnerGroup.classList.remove('hidden');
+        } else {
+            returnerGroup.classList.add('hidden');
+            if (returnerInput) returnerInput.value = ''; // Clear if unchecking
         }
     }
 }
@@ -352,7 +412,6 @@ function toggleBorrowerField() {
 function setItemFormMode(mode = 'add', itemName = '') {
     const modalTitle = document.getElementById('itemModalTitle');
     const submitBtn = document.getElementById('itemSubmitBtn');
-    const nextBinLabel = document.getElementById('nextBinDisplay');
 
     const isEditMode = mode === 'edit';
     editingItemName = isEditMode ? itemName : null;
@@ -366,9 +425,12 @@ function setItemFormMode(mode = 'add', itemName = '') {
             ? '<i class="fas fa-pen"></i> Save Changes'
             : 'Add to Catalog';
     }
-
-    if (nextBinLabel) {
-        nextBinLabel.textContent = isEditMode ? inventory[itemName]?.bin || '-' : bins[binPointer];
+    
+    // reset selection to default when adding
+    if (!isEditMode) {
+        const binSelect = document.getElementById('itemBinSelection');
+        if (binSelect) binSelect.value = 'Added';
+        toggleBorrowerField();
     }
 }
 
@@ -415,8 +477,12 @@ function handleAddItem(e) {
     const itemName = document.getElementById('itemName').value.trim();
     const itemAuthor = document.getElementById('itemAuthor').value.trim();
     const itemTags = document.getElementById('itemTags').value.trim();
-    const isBorrowed = document.getElementById('itemIsBorrowed').checked;
+    const binSelect = document.getElementById('itemBinSelection');
+    const selectedBin = binSelect ? binSelect.value : 'Added';
+    const isBorrowed = selectedBin === 'Borrowed';
     const itemBorrower = document.getElementById('itemBorrower').value.trim();
+    const itemReturnerInput = document.getElementById('itemReturner');
+    const itemReturner = itemReturnerInput ? itemReturnerInput.value.trim() : '';
 
     if (!itemName) {
         showMessage('Please enter a book title', 'error');
@@ -450,13 +516,15 @@ function handleAddItem(e) {
         inventory[itemName] = {
             ...existingData,
             author: itemAuthor,
+            bin: selectedBin,
             tags: parsedTags,
             isBorrowed: isBorrowed,
-            borrower: isBorrowed ? itemBorrower : ''
+            borrower: isBorrowed ? itemBorrower : '',
+            returner: selectedBin === 'Returned' ? itemReturner : ''
         };
         showMessage(`Updated "${itemName}"`, 'success');
     } else {
-        const assignedBin = bins[binPointer];
+        const assignedBin = selectedBin;
         const newId = generateUniqueId();
         inventory[itemName] = {
             id: newId,
@@ -465,10 +533,10 @@ function handleAddItem(e) {
             tags: parsedTags,
             isBorrowed: isBorrowed,
             borrower: isBorrowed ? itemBorrower : '',
+            returner: selectedBin === 'Returned' ? itemReturner : '',
             dateAdded: new Date().toISOString()
         };
-        binPointer = (binPointer + 1) % bins.length;
-        showMessage(`Catalog updated: '${itemName}' (#${newId}) assigned to ${assignedBin}`, 'success');
+        showMessage(`Catalog updated: '${itemName}' (#${newId}) marked as ${assignedBin}`, 'success');
     }
 
     saveToStorage();
@@ -527,13 +595,18 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
         const date = formatDisplayDate(details.dateAdded);
         const categoryCount = details.tags.length;
         const tagBadges = details.tags.length > 0
-            ? details.tags.slice(0, 3).map((tag) => `<span class="card-side-tag"># ${tag}</span>`).join('')
-            : '<span class="card-side-tag muted"># uncategorized</span>';
+            ? details.tags.slice(0, 3).map((tag) => `<span class="card-side-tag">${tag}</span>`).join('')
+            : '<span class="card-side-tag muted">uncategorized</span>';
 
         const authorHtml = details.author ? `<div class="card-author">by ${details.author}</div>` : '';
-        const borrowerHtml = (details.isBorrowed && details.borrower)
-            ? `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-user-tag" style="color: #f59e0b;"></i> Borrowed by: ${details.borrower}</div>`
-            : '';
+        
+        let actionHtml = '';
+        if (details.isBorrowed && details.borrower) {
+            actionHtml = `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-user-tag" style="color: #f59e0b;"></i> Borrowed by: ${details.borrower}</div>`;
+        } else if (details.bin === 'Returned' && details.returner) {
+            actionHtml = `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-undo" style="color: #22c55e;"></i> Returned by: ${details.returner}</div>`;
+        }
+        
         const borrowedBadge = details.isBorrowed ? '<span class="borrowed-badge">BORROWED</span>' : '';
         const bookId = details.id || 'N/A';
 
@@ -549,9 +622,9 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
                 <div class="card-body-row">
                     <div class="card-main-meta">
                         <div class="card-meta"><i class="far fa-calendar"></i> Added ${date}</div>
-                        <div class="card-meta"><i class="fas fa-box"></i> Shelf ${details.bin}</div>
+                        <div class="card-meta"><i class="fas fa-box"></i> Bin/Status: ${details.bin}</div>
                         <div class="card-meta"><i class="fas fa-tags"></i> ${categoryCount} categories</div>
-                        ${borrowerHtml}
+                        ${actionHtml}
                     </div>
                     <div class="card-side-tags">
                         ${tagBadges}
@@ -578,14 +651,7 @@ function renderTagList() {
     const totalUpdatesElement = document.getElementById('totalUpdates');
     if (!container) return;
 
-    // Extract unique tags and count items per tag
-    const tagCounts = {};
-    Object.values(inventory).forEach(item => {
-        item.tags.forEach(tag => {
-            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
-    });
-
+    const { tagCounts } = getInventoryStats();
     const tags = Object.keys(tagCounts).sort();
 
     if (totalUpdatesElement) {
@@ -601,7 +667,7 @@ function renderTagList() {
         <div class="tag-item ${activeTagFilter === tag ? 'active' : ''}" onclick="filterByTag('${tag}')">
             <div class="tag-name-wrapper">
                 <div class="tag-bullet"></div>
-                <span class="tag-name"># ${tag}</span>
+                <span class="tag-name">${tag}</span>
             </div>
             <span class="tag-options">${tagCounts[tag]}</span>
         </div>
@@ -643,18 +709,22 @@ function openEditItemModal(itemName) {
     const itemNameInput = document.getElementById('itemName');
     const itemAuthorInput = document.getElementById('itemAuthor');
     const itemTagsInput = document.getElementById('itemTags');
-    const itemIsBorrowedInput = document.getElementById('itemIsBorrowed');
     const itemBorrowerInput = document.getElementById('itemBorrower');
+    const itemReturnerInput = document.getElementById('itemReturner');
+    const binSelect = document.getElementById('itemBinSelection');
     if (!itemNameInput || !itemTagsInput) return;
 
     setItemFormMode('edit', itemName);
     itemNameInput.value = itemName;
     if (itemAuthorInput) itemAuthorInput.value = itemData.author || '';
     itemTagsInput.value = itemData.tags.join(', ');
-    if (itemIsBorrowedInput) itemIsBorrowedInput.checked = !!itemData.isBorrowed;
+    if (binSelect) {
+        binSelect.value = itemData.bin || (itemData.isBorrowed ? 'Borrowed' : 'Added');
+    }
     if (itemBorrowerInput) itemBorrowerInput.value = itemData.borrower || '';
+    if (itemReturnerInput) itemReturnerInput.value = itemData.returner || '';
 
-    // Toggle borrower field visibility
+    // Toggle borrower/returner field visibility
     toggleBorrowerField();
 
     document.getElementById('addItemModal').classList.remove('hidden');
@@ -664,19 +734,24 @@ function renderBinStatus() {
     const container = document.getElementById('binStatus');
     if (!container) return;
 
-    container.innerHTML = bins.map((bin, index) => {
+    container.innerHTML = bins.map((bin) => {
         const itemCount = Object.values(inventory).filter(item => item.bin === bin).length;
-        const isNext = index === binPointer;
+
+        let iconStr = '<i class="fas fa-box"></i>';
+        if (bin === 'Added') iconStr = '<i class="fas fa-plus-circle"></i>';
+        if (bin === 'Borrowed') iconStr = '<i class="fas fa-hand-holding-hand"></i>';
+        if (bin === 'Returned') iconStr = '<i class="fas fa-undo"></i>';
 
         return `
-            <div class="bin-card ${isNext ? 'active-bin' : ''}" onclick="filterByBin('${bin}')">
+            <div class="bin-card" onclick="filterByBin('${bin}')">
                 <div class="bin-card-header">
-                    <div class="bin-card-icon">${bin.split('-')[1]}</div>
-                    ${isNext ? '<span class="bin-badge">NEXT</span>' : ''}
+                    <div class="bin-card-icon" style="background: none; color: inherit; font-size: 1.5rem;">
+                        ${iconStr}
+                    </div>
                 </div>
-                <h4 class="card-title">${bin}</h4>
+                <h4 class="card-title">${bin} Books</h4>
                 <div class="card-meta">
-                    <i class="fas fa-box"></i> ${itemCount} Titles stored
+                    <i class="fas fa-book"></i> ${itemCount} Titles
                 </div>
                 <div class="card-details">
                     View titles <i class="fas fa-arrow-right"></i>
@@ -755,14 +830,7 @@ function showAllItems() {
 }
 
 function focusTopTagFromDashboard() {
-    const tagCounts = {};
-    Object.values(inventory).forEach((item) => {
-        if (item.tags && Array.isArray(item.tags)) {
-            item.tags.forEach((tag) => {
-                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-            });
-        }
-    });
+    const { tagCounts } = getInventoryStats();
     const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
     if (!topTag) {
         showMessage('No tags available yet', 'info');
