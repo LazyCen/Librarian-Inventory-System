@@ -261,7 +261,7 @@
                 <!-- Category Breakdown -->
                 <div class="chart-card">
                     <div class="chart-header">
-                        <span class="chart-title"><i class="fas fa-arrows-rotate" style="margin-right: 8px; color: var(--primary);"></i> Book Updates</span>
+                        <span class="chart-title"><i class="fas fa-tags" style="margin-right: 8px; color: var(--primary);"></i> Categories</span>
                         <button class="btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;" onclick="handleDownloadReport()">
                             <i class="fas fa-file-export"></i> Generate Report
                         </button>
@@ -272,9 +272,9 @@
                                 <!-- Donut segments will be injected here -->
                             </svg>
                             <div class="chart-center">
-                                <div class="center-label" id="donutCenterIcon"><i class="fas fa-leaf"></i></div>
-                                <div class="center-val" id="donutCenterText">Fiction</div>
-                                <div class="center-sub" id="donutCenterSub">35% - 1,677 Titles</div>
+                                <div class="center-label" id="donutCenterIcon"><i class="fas fa-tags"></i></div>
+                                <div class="center-val" id="donutCenterText">Category</div>
+                                <div class="center-sub" id="donutCenterSub">Loading...</div>
                             </div>
                         </div>
                         <div class="category-list" id="dashCategoryList">
@@ -339,15 +339,7 @@
                 </div>
             </div>
 
-            <div class="categories-panel-wrap" style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;">
-                <div class="section-title">
-                    <span><i class="fas fa-tags" style="color: var(--primary); margin-right: 8px;"></i> Categories</span>
-                    <span class="badge-update" id="totalUpdates">0 Active</span>
-                </div>
-                <div id="tagList" class="tag-list">
-                    <!-- populated by main.js -->
-                </div>
-            </div>
+
         </aside>
     </div>
 
@@ -375,8 +367,6 @@
                     <label class="form-label">Bin Status</label>
                     <select id="itemBinSelection" class="form-input" onchange="toggleBorrowerField()" style="padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; cursor: pointer;">
                         <option value="Added">Register</option>
-                        <option value="Borrowed">Borrowed</option>
-                        <option value="Returned">Returned</option>
                     </select>
                 </div>
                 <div id="borrowerFieldGroup" class="form-group hidden" style="margin-bottom: 24px;">

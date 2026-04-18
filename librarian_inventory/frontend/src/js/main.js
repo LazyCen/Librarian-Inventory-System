@@ -5,7 +5,7 @@
 
 // Global state variables
 let inventory = {}; // Stores all inventory items
-let bins = ["Added", "Borrowed", "Returned"]; // Available bin statuses
+let bins = ["Books", "Added", "Borrowed", "Returned"]; // Available bin statuses
 let binPointer = 0; // Deprecated
 let currentView = 'dashboard'; // Tracks the active view
 let currentQuery = '';
@@ -229,8 +229,13 @@ function renderDashboardView() {
     const totalBooks = stats.totalBooks;
     const { tagCounts, statusCounts } = stats;
 
-    const statusData = Object.entries(statusCounts).filter(([label, count]) => count > 0 && label === 'Returned');
-    const totalTransactions = statusData.reduce((acc, [, count]) => acc + count, 0);
+    const tagData = Object.entries(tagCounts)
+        .filter(([, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1]);
+        
+    // Take top 4 categories for the donut chart
+    const topTagData = tagData.slice(0, 4);
+    const totalTagTransactions = topTagData.reduce((acc, [, count]) => acc + count, 0);
 
     // Update Stats Cards
     const totalBooksEl = document.getElementById('dashTotalBooks');
@@ -240,7 +245,7 @@ function renderDashboardView() {
     if (totalTagsEl) totalTagsEl.textContent = Object.keys(tagCounts).length;
 
     const totalBinsEl = document.getElementById('dashTotalBins');
-    if (totalBinsEl) totalBinsEl.textContent = bins.filter(b => b !== 'Added').length;
+    if (totalBinsEl) totalBinsEl.textContent = bins.length;
 
     const recentItemsEl = document.getElementById('dashRecentItems');
     if (recentItemsEl) {
@@ -249,7 +254,7 @@ function renderDashboardView() {
     }
 
     // Render Donut Chart & List
-    renderDonutChart(statusData, totalTransactions);
+    renderDonutChart(topTagData, totalTagTransactions);
 
     // Render Dashboard Borrowed List
     renderDashboardBorrowedList();
@@ -267,9 +272,9 @@ function renderDonutChart(data, total) {
     list.innerHTML = '';
 
     if (data.length === 0) {
-        list.innerHTML = '<p class="text-gray-400">Track book borrowed and returned activity here.</p>';
-        document.getElementById('donutCenterText').textContent = 'No updates';
-        document.getElementById('donutCenterSub').textContent = 'Waiting for book transactions';
+        list.innerHTML = '<p style="color: var(--text-muted);">Add categories to your books to see the breakdown here.</p>';
+        document.getElementById('donutCenterText').textContent = 'No categories';
+        document.getElementById('donutCenterSub').textContent = 'Waiting for book tags';
         return;
     }
 
@@ -305,25 +310,25 @@ function renderDonutChart(data, total) {
         // List Item
         const color = colors[i % colors.length];
         list.innerHTML += `
-            <div class="category-item clickable" onclick="filterByBin('${label}')">
+            <div class="category-item clickable" onclick="filterByTag('${label}')">
                 <div class="category-info">
                     <div class="category-bullet" style="background: ${color}"></div>
                     <div class="category-details">
                         <span class="category-name">${label}</span>
-                        <span class="category-sub">${count.toLocaleString()} Titles</span>
+                        <span class="category-sub">Total Books</span>
                     </div>
                 </div>
-                <div class="category-percent">${percent}%</div>
+                <div class="category-percent">${count.toLocaleString()}</div>
             </div>
         `;
 
         // Update Center text and icon to top status
         if (i === 0) {
             const iconEl = document.getElementById('donutCenterIcon');
-            if (iconEl) iconEl.innerHTML = statusIcons[label] || '<i class="fas fa-arrows-rotate"></i>';
+            if (iconEl) iconEl.innerHTML = statusIcons[label] || '<i class="fas fa-tag" style="color: var(--primary);"></i>';
 
             document.getElementById('donutCenterText').textContent = label;
-            document.getElementById('donutCenterSub').textContent = `${percent}% - ${count.toLocaleString()} Titles`;
+            document.getElementById('donutCenterSub').textContent = `${count.toLocaleString()} Total Books`;
         }
     });
 }
@@ -407,7 +412,7 @@ function toggleBorrowerField() {
     }
 }
 
-function setItemFormMode(mode = 'add', itemName = '') {
+function setItemFormMode(mode = 'add', itemName = '', currentBin = '') {
     const modalTitle = document.getElementById('itemModalTitle');
     const submitBtn = document.getElementById('itemSubmitBtn');
 
@@ -424,11 +429,39 @@ function setItemFormMode(mode = 'add', itemName = '') {
             : 'Add to Catalog';
     }
 
-    // reset selection to default when adding
-    if (!isEditMode) {
-        const binSelect = document.getElementById('itemBinSelection');
-        if (binSelect) binSelect.value = 'Added';
-        toggleBorrowerField();
+    // dynamically set options
+    const binSelect = document.getElementById('itemBinSelection');
+    if (binSelect) {
+        if (!isEditMode) {
+            binSelect.innerHTML = '<option value="Added">Register</option>';
+            binSelect.value = 'Added';
+            toggleBorrowerField();
+        } else {
+            if (currentBin === 'Books') {
+                binSelect.innerHTML = `
+                    <option value="Borrowed">Borrow Book</option>
+                `;
+            } else if (currentBin === 'Added') {
+                binSelect.innerHTML = `
+                    <option value="Added">Register</option>
+                `;
+            } else if (currentBin === 'Borrowed') {
+                binSelect.innerHTML = `
+                    <option value="Borrowed">Borrowed</option>
+                    <option value="Returned">Returned</option>
+                `;
+            } else if (currentBin === 'Returned') {
+                binSelect.innerHTML = `
+                    <option value="Books">Books</option>
+                `;
+            } else {
+                binSelect.innerHTML = `
+                    <option value="Books">Books</option>
+                    <option value="Borrowed">Borrowed</option>
+                    <option value="Returned">Returned</option>
+                `;
+            }
+        }
     }
 }
 
@@ -712,12 +745,13 @@ function openEditItemModal(itemName) {
     const binSelect = document.getElementById('itemBinSelection');
     if (!itemNameInput || !itemTagsInput) return;
 
-    setItemFormMode('edit', itemName);
+    const currentBin = itemData.bin || (itemData.isBorrowed ? 'Borrowed' : 'Added');
+    setItemFormMode('edit', itemName, currentBin);
     itemNameInput.value = itemName;
     if (itemAuthorInput) itemAuthorInput.value = itemData.author || '';
     itemTagsInput.value = itemData.tags.join(', ');
     if (binSelect) {
-        binSelect.value = itemData.bin || (itemData.isBorrowed ? 'Borrowed' : 'Added');
+        binSelect.value = currentBin;
     }
     if (itemBorrowerInput) itemBorrowerInput.value = itemData.borrower || '';
     if (itemReturnerInput) itemReturnerInput.value = itemData.returner || '';
@@ -732,13 +766,16 @@ function renderBinStatus() {
     const container = document.getElementById('binStatus');
     if (!container) return;
 
-    container.innerHTML = bins.filter(b => b !== 'Added').map((bin) => {
-        const itemCount = Object.values(inventory).filter(item => item.bin === bin).length;
+    container.innerHTML = bins.map((bin) => {
+        const itemCount = Object.values(inventory).filter(item => (item.bin || (item.isBorrowed ? 'Borrowed' : 'Added')) === bin).length;
 
         let iconStr = '<i class="fas fa-box"></i>';
         if (bin === 'Added') iconStr = '<i class="fas fa-plus-circle"></i>';
         if (bin === 'Borrowed') iconStr = '<i class="fas fa-hand-holding-hand"></i>';
         if (bin === 'Returned') iconStr = '<i class="fas fa-undo"></i>';
+        if (bin === 'Books') iconStr = '<i class="fas fa-book"></i>';
+
+        const titleText = bin === 'Books' ? 'Books' : `${bin} Books`;
 
         return `
             <div class="bin-card" onclick="filterByBin('${bin}')">
@@ -747,7 +784,7 @@ function renderBinStatus() {
                         ${iconStr}
                     </div>
                 </div>
-                <h4 class="card-title">${bin} Books</h4>
+                <h4 class="card-title">${titleText}</h4>
                 <div class="card-meta">
                     <i class="fas fa-book"></i> ${itemCount} Titles
                 </div>
@@ -774,7 +811,7 @@ function getFilteredEntries() {
         entries = entries.filter(([, details]) => details.tags && details.tags.includes(activeTagFilter));
     }
     if (activeBinFilter) {
-        entries = entries.filter(([, details]) => details.bin === activeBinFilter);
+        entries = entries.filter(([, details]) => (details.bin || (details.isBorrowed ? 'Borrowed' : 'Added')) === activeBinFilter);
     }
     entries = sortEntries(entries);
     return entries;
