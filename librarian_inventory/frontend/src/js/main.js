@@ -177,8 +177,7 @@ function switchView(view) {
     const navMapping = {
         list: 'Books',
         bins: 'Bins Status',
-        dashboard: 'Dashboard',
-        borrowed: 'Borrowed Books'
+        dashboard: 'Dashboard'
     };
     const activeNavText = navMapping[view] || 'Inventory';
     document.querySelectorAll('.nav-item[data-view]').forEach(nav => {
@@ -214,7 +213,6 @@ function switchView(view) {
     if (view === 'list') renderListView(getFilteredEntries(), currentQuery);
     if (view === 'bins') renderBinStatus();
     if (view === 'dashboard') renderDashboardView();
-    if (view === 'borrowed') renderBorrowedView();
 
     // Update next bin display
     updateNextBinDisplay();
@@ -893,13 +891,7 @@ function generateUniqueId() {
     return id;
 }
 
-/**
- * Render the specifically filtered Borrowed view
- */
-function renderBorrowedView() {
-    const borrowedItems = Object.entries(inventory).filter(([, details]) => details.isBorrowed);
-    renderListView(borrowedItems, "", 'borrowedList', 'borrowedCount');
-}
+
 
 
 console.log('Main Logic Updated for New Dashboard');
