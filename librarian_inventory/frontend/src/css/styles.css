@@ -1289,12 +1289,12 @@ body {
     color: #15803d;
 }
 
-/* Scrollable list — max 4 rows visible, rest scrollable */
+/* Scrollable list — max 7 rows visible, rest scrollable */
 #usersList {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: 256px;
+    max-height: 400px;
     overflow-y: auto;
     padding-right: 4px;
     scrollbar-width: thin;
