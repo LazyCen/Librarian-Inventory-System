@@ -64,6 +64,34 @@ function loadFromStorage() {
     if (savedInventory) {
         try {
             inventory = JSON.parse(savedInventory);
+
+            // Data Migration: Ensure all items have necessary fields
+            let migrated = false;
+            Object.keys(inventory).forEach(name => {
+                const item = inventory[name];
+                if (!item.id) {
+                    item.id = generateUniqueId();
+                    migrated = true;
+                }
+                if (item.author === undefined) {
+                    item.author = '';
+                    migrated = true;
+                }
+                if (!item.tags) {
+                    item.tags = [];
+                    migrated = true;
+                }
+                if (item.isBorrowed === undefined) {
+                    item.isBorrowed = false;
+                    migrated = true;
+                }
+                if (item.borrower === undefined) {
+                    item.borrower = '';
+                    migrated = true;
+                }
+            });
+
+            if (migrated) saveToStorage();
         } catch (error) {
             console.error('Error loading inventory:', error);
             inventory = {};
@@ -107,7 +135,8 @@ function switchView(view) {
     const navMapping = {
         list: 'Catalog',
         bins: 'Shelves',
-        dashboard: 'Overview'
+        dashboard: 'Overview',
+        borrowed: 'Borrowed Documents'
     };
     const activeNavText = navMapping[view] || 'Inventory';
     document.querySelectorAll('.nav-item[data-view]').forEach(nav => {
@@ -124,6 +153,16 @@ function switchView(view) {
         viewElement.classList.add('fade-in');
     }
 
+    // Handle sort button visibility
+    const filterBtn = document.getElementById('filterBtn');
+    if (filterBtn) {
+        if (view === 'dashboard' || view === 'bins') {
+            filterBtn.classList.add('hidden');
+        } else {
+            filterBtn.classList.remove('hidden');
+        }
+    }
+
     // Update Title
     const titleElement = document.getElementById('currentViewTitle');
     if (titleElement) {
@@ -133,6 +172,7 @@ function switchView(view) {
     if (view === 'list') renderListView(getFilteredEntries(), currentQuery);
     if (view === 'bins') renderBinStatus();
     if (view === 'dashboard') renderDashboardView();
+    if (view === 'borrowed') renderBorrowedView();
 
     // Update next bin display
     updateNextBinDisplay();
@@ -146,13 +186,15 @@ function switchView(view) {
  */
 function renderDashboardView() {
     const totalBooks = Object.keys(inventory).length;
-    
+
     // Calculate tag frequencies for categories
     const tagCounts = {};
     Object.values(inventory).forEach(item => {
-        item.tags.forEach(tag => {
-            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
+        if (item.tags && Array.isArray(item.tags)) {
+            item.tags.forEach(tag => {
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        }
     });
 
     const sortedTags = Object.entries(tagCounts)
@@ -170,6 +212,9 @@ function renderDashboardView() {
 
     // Render Donut Chart & List
     renderDonutChart(sortedTags, totalTagUsage);
+
+    // Render Dashboard Borrowed List
+    renderDashboardBorrowedList();
 }
 
 /**
@@ -190,7 +235,7 @@ function renderDonutChart(data, total) {
         return;
     }
 
-    const colors = ['#101828', '#475467', '#667085', '#98a2b3']; // Grayscale high-end colors
+    const colors = ['#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f97316']; // Premium aesthetic sunset/warm gradient
     const radius = 80;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
@@ -198,7 +243,7 @@ function renderDonutChart(data, total) {
     data.forEach(([tag, count], i) => {
         const percent = ((count / total) * 100).toFixed(0);
         const dashArray = (count / total) * circumference;
-        
+
         // SVG Segment
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("class", "donut-segment");
@@ -235,10 +280,72 @@ function renderDonutChart(data, total) {
     });
 }
 
+/**
+ * Render a simplified list of borrowed books for the dashboard
+ */
+function renderDashboardBorrowedList() {
+    const container = document.getElementById('dashBorrowedList');
+    if (!container) return;
+
+    const borrowedItems = Object.entries(inventory).filter(([, details]) => details.isBorrowed);
+
+    if (borrowedItems.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 2px dashed #f1f5f9; border-radius: 12px;">
+                <i class="fas fa-check-circle" style="font-size: 2rem; color: #22c55e; margin-bottom: 12px; opacity: 0.5;"></i>
+                <p>No books currently borrowed. Everything is in stock!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+            ${borrowedItems.map(([name, details]) => {
+        const bookId = details.id || 'N/A';
+        return `
+                    <div class="dash-borrowed-item" style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fff; border: 1px solid var(--border-color); border-radius: 12px; transition: all 0.2s ease;">
+                        <div style="width: 48px; height: 48px; min-width: 48px; background: #fffbeb; color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                            #${bookId}
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${name}</div>
+                            <div style="font-size: 0.8rem; color: #000; display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                                <i class="fas fa-user-tag" style="font-size: 0.7rem; color: #f59e0b;"></i> ${details.borrower || 'Unknown Borrower'}
+                            </div>
+                        </div>
+                        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="openEditItemModal('${name.replace(/'/g, "\\'")}')">
+                            Manage
+                        </button>
+                    </div>
+                `;
+    }).join('')}
+        </div>
+    `;
+}
+
 function updateNextBinDisplay() {
     const nextBinElement = document.getElementById('nextBinDisplay');
     if (nextBinElement) {
         nextBinElement.textContent = bins[binPointer];
+    }
+}
+
+/**
+ * Toggles the borrower name field based on whether the borrowed checkbox is checked
+ */
+function toggleBorrowerField() {
+    const isBorrowed = document.getElementById('itemIsBorrowed').checked;
+    const group = document.getElementById('borrowerFieldGroup');
+    const input = document.getElementById('itemBorrower');
+
+    if (group) {
+        if (isBorrowed) {
+            group.classList.remove('hidden');
+        } else {
+            group.classList.add('hidden');
+            if (input) input.value = ''; // Clear if unchecking
+        }
     }
 }
 
@@ -306,7 +413,10 @@ function handleAddItem(e) {
     e.preventDefault();
 
     const itemName = document.getElementById('itemName').value.trim();
+    const itemAuthor = document.getElementById('itemAuthor').value.trim();
     const itemTags = document.getElementById('itemTags').value.trim();
+    const isBorrowed = document.getElementById('itemIsBorrowed').checked;
+    const itemBorrower = document.getElementById('itemBorrower').value.trim();
 
     if (!itemName) {
         showMessage('Please enter a book title', 'error');
@@ -339,18 +449,26 @@ function handleAddItem(e) {
         delete inventory[editingItemName];
         inventory[itemName] = {
             ...existingData,
-            tags: parsedTags
+            author: itemAuthor,
+            tags: parsedTags,
+            isBorrowed: isBorrowed,
+            borrower: isBorrowed ? itemBorrower : ''
         };
         showMessage(`Updated "${itemName}"`, 'success');
     } else {
         const assignedBin = bins[binPointer];
+        const newId = generateUniqueId();
         inventory[itemName] = {
+            id: newId,
+            author: itemAuthor,
             bin: assignedBin,
             tags: parsedTags,
+            isBorrowed: isBorrowed,
+            borrower: isBorrowed ? itemBorrower : '',
             dateAdded: new Date().toISOString()
         };
         binPointer = (binPointer + 1) % bins.length;
-        showMessage(`Catalog updated: '${itemName}' assigned to ${assignedBin}`, 'success');
+        showMessage(`Catalog updated: '${itemName}' (#${newId}) assigned to ${assignedBin}`, 'success');
     }
 
     saveToStorage();
@@ -386,9 +504,9 @@ function handleSearch() {
  * Render the complete list of all inventory items
  * Updated to match RegTech card design
  */
-function renderListView(itemsToRender = null, query = "") {
-    const container = document.getElementById('inventoryList');
-    const countElement = document.getElementById('itemCount');
+function renderListView(itemsToRender = null, query = "", targetContainerId = 'inventoryList', targetCountId = 'itemCount') {
+    const container = document.getElementById(targetContainerId);
+    const countElement = document.getElementById(targetCountId);
     if (!container) return;
 
     const items = itemsToRender || getFilteredEntries();
@@ -411,20 +529,29 @@ function renderListView(itemsToRender = null, query = "") {
         const tagBadges = details.tags.length > 0
             ? details.tags.slice(0, 3).map((tag) => `<span class="card-side-tag"># ${tag}</span>`).join('')
             : '<span class="card-side-tag muted"># uncategorized</span>';
-        
+
+        const authorHtml = details.author ? `<div class="card-author">by ${details.author}</div>` : '';
+        const borrowerHtml = (details.isBorrowed && details.borrower)
+            ? `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-user-tag" style="color: #f59e0b;"></i> Borrowed by: ${details.borrower}</div>`
+            : '';
+        const borrowedBadge = details.isBorrowed ? '<span class="borrowed-badge">BORROWED</span>' : '';
+        const bookId = details.id || 'N/A';
+
         return `
-            <div class="item-card">
+            <div class="item-card ${details.isBorrowed ? 'borrowed-item' : ''}">
                 <div class="card-options" onclick="openEditItemModal('${safeName}')">
                     <i class="fas fa-pen"></i>
                 </div>
-                <div class="card-icon">BK</div>
-                <div class="card-updates">Catalog record</div>
+                <div class="card-icon">#${bookId}</div>
+                <div class="card-updates">Catalog record ${borrowedBadge}</div>
                 <h4 class="card-title">${name}</h4>
+                ${authorHtml}
                 <div class="card-body-row">
                     <div class="card-main-meta">
                         <div class="card-meta"><i class="far fa-calendar"></i> Added ${date}</div>
                         <div class="card-meta"><i class="fas fa-box"></i> Shelf ${details.bin}</div>
                         <div class="card-meta"><i class="fas fa-tags"></i> ${categoryCount} categories</div>
+                        ${borrowerHtml}
                     </div>
                     <div class="card-side-tags">
                         ${tagBadges}
@@ -460,7 +587,7 @@ function renderTagList() {
     });
 
     const tags = Object.keys(tagCounts).sort();
-    
+
     if (totalUpdatesElement) {
         totalUpdatesElement.textContent = `${tags.length} Active`;
     }
@@ -514,12 +641,22 @@ function openEditItemModal(itemName) {
     }
 
     const itemNameInput = document.getElementById('itemName');
+    const itemAuthorInput = document.getElementById('itemAuthor');
     const itemTagsInput = document.getElementById('itemTags');
+    const itemIsBorrowedInput = document.getElementById('itemIsBorrowed');
+    const itemBorrowerInput = document.getElementById('itemBorrower');
     if (!itemNameInput || !itemTagsInput) return;
 
     setItemFormMode('edit', itemName);
     itemNameInput.value = itemName;
+    if (itemAuthorInput) itemAuthorInput.value = itemData.author || '';
     itemTagsInput.value = itemData.tags.join(', ');
+    if (itemIsBorrowedInput) itemIsBorrowedInput.checked = !!itemData.isBorrowed;
+    if (itemBorrowerInput) itemBorrowerInput.value = itemData.borrower || '';
+
+    // Toggle borrower field visibility
+    toggleBorrowerField();
+
     document.getElementById('addItemModal').classList.remove('hidden');
 }
 
@@ -554,11 +691,14 @@ function getFilteredEntries() {
     if (currentQuery) {
         entries = entries.filter(([name, details]) =>
             name.toLowerCase().includes(currentQuery) ||
-            details.tags.some(tag => tag.includes(currentQuery))
+            (details.tags && details.tags.some(tag => tag.includes(currentQuery))) ||
+            (details.id && details.id.toString().includes(currentQuery)) ||
+            (details.author && details.author.toLowerCase().includes(currentQuery)) ||
+            (details.borrower && details.borrower.toLowerCase().includes(currentQuery))
         );
     }
     if (activeTagFilter) {
-        entries = entries.filter(([, details]) => details.tags.includes(activeTagFilter));
+        entries = entries.filter(([, details]) => details.tags && details.tags.includes(activeTagFilter));
     }
     if (activeBinFilter) {
         entries = entries.filter(([, details]) => details.bin === activeBinFilter);
@@ -617,9 +757,11 @@ function showAllItems() {
 function focusTopTagFromDashboard() {
     const tagCounts = {};
     Object.values(inventory).forEach((item) => {
-        item.tags.forEach((tag) => {
-            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
+        if (item.tags && Array.isArray(item.tags)) {
+            item.tags.forEach((tag) => {
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        }
     });
     const topTag = Object.entries(tagCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
     if (!topTag) {
@@ -661,11 +803,34 @@ function getDateValue(dateValue) {
     const parsed = Date.parse(dateValue);
     return Number.isNaN(parsed) ? 0 : parsed;
 }
-
 function formatDisplayDate(dateValue) {
     const value = getDateValue(dateValue);
     if (!value) return 'No date';
     return new Date(value).toLocaleDateString('en-GB');
+}
+
+/**
+ * Generate a unique 4-digit ID for a book
+ */
+function generateUniqueId() {
+    let id;
+    let attempts = 0;
+    const existingIds = Object.values(inventory).map(item => item.id?.toString());
+
+    do {
+        id = Math.floor(1000 + Math.random() * 9000).toString();
+        attempts++;
+    } while (existingIds.includes(id) && attempts < 100);
+
+    return id;
+}
+
+/**
+ * Render the specifically filtered Borrowed view
+ */
+function renderBorrowedView() {
+    const borrowedItems = Object.entries(inventory).filter(([, details]) => details.isBorrowed);
+    renderListView(borrowedItems, "", 'borrowedList', 'borrowedCount');
 }
 
 console.log('Main Logic Updated for New Dashboard');

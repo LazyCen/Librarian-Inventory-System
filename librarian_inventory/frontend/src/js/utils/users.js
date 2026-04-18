@@ -9,8 +9,8 @@
  *  - CURRENT_USER_KEY     — email of the user who logged in this session
  */
 
-const ONLINE_USERS_KEY  = 'lisOnlineUsers';
-const CURRENT_USER_KEY  = 'lisCurrentUser';
+const ONLINE_USERS_KEY = 'lisOnlineUsers';
+const CURRENT_USER_KEY = 'lisCurrentUser';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                             */
@@ -115,7 +115,7 @@ function avatarColor(email) {
  */
 function renderUsersPanel() {
     const container = document.getElementById('usersList');
-    const countEl   = document.getElementById('usersOnlineCount');
+    const countEl = document.getElementById('usersOnlineCount');
     if (!container) return;
 
     // Retrieve user registry (written by handleLogin.js)
@@ -126,7 +126,7 @@ function renderUsersPanel() {
         users = [];
     }
 
-    const onlineSet  = getOnlineSet();
+    const onlineSet = getOnlineSet();
     const onlineCount = [...onlineSet].filter(e =>
         users.some(u => u.email === e)
     ).length;
@@ -158,9 +158,9 @@ function renderUsersPanel() {
     });
 
     container.innerHTML = sorted.map(user => {
-        const isOnline  = onlineSet.has(user.email);
-        const initials  = getInitials(user.fullName, user.email);
-        const color     = avatarColor(user.email);
+        const isOnline = onlineSet.has(user.email);
+        const initials = getInitials(user.fullName, user.email);
+        const color = avatarColor(user.email);
         const displayName = user.fullName || user.email.split('@')[0];
         const statusLabel = isOnline ? 'Online' : 'Offline';
 

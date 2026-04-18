@@ -4,7 +4,7 @@
  * @param {boolean} isSignup - If true, displays the signup form and hides the login form. If false, does the reverse.
  */
 function toggleAuth(isSignup) {
-    const loginForm  = document.getElementById('loginForm');
+    const loginForm = document.getElementById('loginForm');
     const signupForm = document.getElementById('signupForm');
     const authNotice = document.getElementById('authNotice');
     if (authNotice) {
@@ -12,10 +12,10 @@ function toggleAuth(isSignup) {
         authNotice.textContent = '';
     }
     if (isSignup) {
-        loginForm.style.display  = 'none';
+        loginForm.style.display = 'none';
         signupForm.style.display = 'flex';
     } else {
         signupForm.style.display = 'none';
-        loginForm.style.display  = 'flex';
+        loginForm.style.display = 'flex';
     }
 }
