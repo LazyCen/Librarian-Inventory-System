@@ -231,8 +231,8 @@ function renderDashboardView() {
     const totalBooks = stats.totalBooks;
     const { tagCounts, statusCounts } = stats;
 
-    const statusData = Object.entries(statusCounts).filter(([, count]) => count > 0);
-    const totalTransactions = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+    const statusData = Object.entries(statusCounts).filter(([label, count]) => count > 0 && label === 'Returned');
+    const totalTransactions = statusData.reduce((acc, [, count]) => acc + count, 0);
 
     // Update Stats Cards
     const totalBooksEl = document.getElementById('dashTotalBooks');
@@ -242,7 +242,7 @@ function renderDashboardView() {
     if (totalTagsEl) totalTagsEl.textContent = Object.keys(tagCounts).length;
 
     const totalBinsEl = document.getElementById('dashTotalBins');
-    if (totalBinsEl) totalBinsEl.textContent = bins.length;
+    if (totalBinsEl) totalBinsEl.textContent = bins.filter(b => b !== 'Added').length;
 
     const recentItemsEl = document.getElementById('dashRecentItems');
     if (recentItemsEl) {
@@ -269,9 +269,9 @@ function renderDonutChart(data, total) {
     list.innerHTML = '';
 
     if (data.length === 0) {
-        list.innerHTML = '<p class="text-gray-400">Add books with categories to see distribution.</p>';
-        document.getElementById('donutCenterText').textContent = 'No tags yet';
-        document.getElementById('donutCenterSub').textContent = 'Start by adding your first title';
+        list.innerHTML = '<p class="text-gray-400">Track book borrowed and returned activity here.</p>';
+        document.getElementById('donutCenterText').textContent = 'No updates';
+        document.getElementById('donutCenterSub').textContent = 'Waiting for book transactions';
         return;
     }
 
@@ -279,12 +279,12 @@ function renderDonutChart(data, total) {
     const radius = 80;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
-    
+
     // Icon mapping for center display
     const statusIcons = {
         'Added': '<i class="fas fa-circle-plus" style="color: #3b82f6;"></i>',
-        'Borrowed': '<i class="fas fa-hand-holding-hand" style="color: #f59e0b;"></i>',
-        'Returned': '<i class="fas fa-undo" style="color: #10b981;"></i>'
+        'Borrowed': '<i class="fas fa-hand-holding-hand" style="color: #22c55e;"></i>',
+        'Returned': '<i class="fas fa-undo" style="color: #ef4444;"></i>'
     };
 
     data.forEach(([label, count], i) => {
@@ -323,7 +323,7 @@ function renderDonutChart(data, total) {
         if (i === 0) {
             const iconEl = document.getElementById('donutCenterIcon');
             if (iconEl) iconEl.innerHTML = statusIcons[label] || '<i class="fas fa-arrows-rotate"></i>';
-            
+
             document.getElementById('donutCenterText').textContent = label;
             document.getElementById('donutCenterSub').textContent = `${percent}% - ${count.toLocaleString()} Titles`;
         }
@@ -385,7 +385,7 @@ function toggleBorrowerField() {
     const select = document.getElementById('itemBinSelection');
     const isBorrowed = select && select.value === 'Borrowed';
     const isReturned = select && select.value === 'Returned';
-    
+
     const borrowerGroup = document.getElementById('borrowerFieldGroup');
     const borrowerInput = document.getElementById('itemBorrower');
     if (borrowerGroup) {
@@ -396,7 +396,7 @@ function toggleBorrowerField() {
             if (borrowerInput) borrowerInput.value = ''; // Clear if unchecking
         }
     }
-    
+
     const returnerGroup = document.getElementById('returnerFieldGroup');
     const returnerInput = document.getElementById('itemReturner');
     if (returnerGroup) {
@@ -425,7 +425,7 @@ function setItemFormMode(mode = 'add', itemName = '') {
             ? '<i class="fas fa-pen"></i> Save Changes'
             : 'Add to Catalog';
     }
-    
+
     // reset selection to default when adding
     if (!isEditMode) {
         const binSelect = document.getElementById('itemBinSelection');
@@ -599,14 +599,14 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
             : '<span class="card-side-tag muted">uncategorized</span>';
 
         const authorHtml = details.author ? `<div class="card-author">by ${details.author}</div>` : '';
-        
+
         let actionHtml = '';
         if (details.isBorrowed && details.borrower) {
             actionHtml = `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-user-tag" style="color: #f59e0b;"></i> Borrowed by: ${details.borrower}</div>`;
         } else if (details.bin === 'Returned' && details.returner) {
             actionHtml = `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-undo" style="color: #22c55e;"></i> Returned by: ${details.returner}</div>`;
         }
-        
+
         const borrowedBadge = details.isBorrowed ? '<span class="borrowed-badge">BORROWED</span>' : '';
         const bookId = details.id || 'N/A';
 
@@ -734,7 +734,7 @@ function renderBinStatus() {
     const container = document.getElementById('binStatus');
     if (!container) return;
 
-    container.innerHTML = bins.map((bin) => {
+    container.innerHTML = bins.filter(b => b !== 'Added').map((bin) => {
         const itemCount = Object.values(inventory).filter(item => item.bin === bin).length;
 
         let iconStr = '<i class="fas fa-box"></i>';
@@ -900,5 +900,6 @@ function renderBorrowedView() {
     const borrowedItems = Object.entries(inventory).filter(([, details]) => details.isBorrowed);
     renderListView(borrowedItems, "", 'borrowedList', 'borrowedCount');
 }
+
 
 console.log('Main Logic Updated for New Dashboard');
