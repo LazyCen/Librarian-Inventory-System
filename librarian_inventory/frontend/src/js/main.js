@@ -357,13 +357,13 @@ function renderDashboardBorrowedList() {
             ${borrowedItems.map(([name, details]) => {
         const bookId = details.id || 'N/A';
         return `
-                    <div class="dash-borrowed-item" style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fff; border: 1px solid var(--border-color); border-radius: 12px; transition: all 0.2s ease;">
-                        <div style="width: 48px; height: 48px; min-width: 48px; background: #fffbeb; color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                    <div class="dash-borrowed-item" style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 12px; transition: all 0.2s ease;">
+                        <div style="width: 48px; height: 48px; min-width: 48px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
                             #${bookId}
                         </div>
                         <div style="flex: 1; min-width: 0;">
                             <div style="font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${name}</div>
-                            <div style="font-size: 0.8rem; color: #000; display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; font-weight: 600;">
                                 <i class="fas fa-user-tag" style="font-size: 0.7rem; color: #f59e0b;"></i> ${details.borrower || 'Unknown Borrower'}
                             </div>
                         </div>
@@ -633,9 +633,9 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
 
         let actionHtml = '';
         if (details.isBorrowed && details.borrower) {
-            actionHtml = `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-user-tag" style="color: #f59e0b;"></i> Borrowed by: ${details.borrower}</div>`;
+            actionHtml = `<div class="card-meta" style="color: var(--text-main); font-weight: 600;"><i class="fas fa-user-tag" style="color: #f59e0b;"></i> Borrowed by: ${details.borrower}</div>`;
         } else if (details.bin === 'Returned' && details.returner) {
-            actionHtml = `<div class="card-meta" style="color: #000; font-weight: 600;"><i class="fas fa-undo" style="color: #22c55e;"></i> Returned by: ${details.returner}</div>`;
+            actionHtml = `<div class="card-meta" style="color: var(--text-main); font-weight: 600;"><i class="fas fa-undo" style="color: #22c55e;"></i> Returned by: ${details.returner}</div>`;
         }
 
         const borrowedBadge = details.isBorrowed ? '<span class="borrowed-badge">BORROWED</span>' : '';
