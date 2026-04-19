@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.key === 'Escape' && !document.getElementById('confirmModal')?.classList.contains('hidden')) {
             closeConfirmModal();
         }
+        if (event.key === 'Escape') {
+            toggleMobileSidebar(false);
+        }
     });
 
     const confirmOverlay = document.getElementById('confirmModal');
@@ -56,8 +59,40 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Mobile Sidebar Toggles
+    const menuToggle = document.getElementById('mobileMenuToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    if (menuToggle) {
+        menuToggle.addEventListener('click', () => toggleMobileSidebar(true));
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => toggleMobileSidebar(false));
+    }
+
     console.log('Application ready');
 });
+
+/**
+ * Toggle the mobile sidebar drawer and overlay
+ * @param {boolean} open - Whether to open or close
+ */
+function toggleMobileSidebar(open) {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (!sidebar || !overlay) return;
+
+    if (open) {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+    } else {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+        document.body.style.overflow = '';
+    }
+}
 
 // Core functions for inventory management
 
@@ -158,6 +193,9 @@ function switchView(view) {
     if (view === 'list') renderListView(getFilteredEntries(), currentQuery);
     if (view === 'bins') renderBinStatus();
     if (view === 'dashboard') renderDashboardView();
+    
+    // Auto-close mobile sidebar after switching
+    toggleMobileSidebar(false);
 
 
 
