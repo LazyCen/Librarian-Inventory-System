@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('Librarian Inventory System Initialized');
 
     // Load saved data from browser's local storage
-    loadFromStorage();
+    inventory = StorageManager.loadInventory();
+    binPointer = StorageManager.loadBinPointer();
 
     // Render the initial view
     renderListView();
@@ -59,76 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('Application ready');
 });
 
-function loadFromStorage() {
-    const savedInventory = localStorage.getItem('chaosInventory');
-    if (savedInventory) {
-        try {
-            inventory = JSON.parse(savedInventory);
-
-            // Data Migration: Ensure all items have necessary fields
-            let migrated = false;
-            Object.keys(inventory).forEach(name => {
-                const item = inventory[name];
-                if (!item.id) {
-                    item.id = generateUniqueId();
-                    migrated = true;
-                }
-                if (item.author === undefined) {
-                    item.author = '';
-                    migrated = true;
-                }
-                if (!item.tags) {
-                    item.tags = [];
-                    migrated = true;
-                }
-                if (item.isBorrowed === undefined) {
-                    item.isBorrowed = false;
-                    migrated = true;
-                }
-                if (item.borrower === undefined) {
-                    item.borrower = '';
-                    migrated = true;
-                }
-                if (item.bin && item.bin.startsWith('Bin-')) {
-                    item.bin = item.isBorrowed ? 'Borrowed' : 'Added';
-                    migrated = true;
-                }
-                if (item.tags && Array.isArray(item.tags)) {
-                    const originalTags = JSON.stringify(item.tags);
-                    item.tags = item.tags.map(tag => {
-                        const lowTag = tag.toLowerCase();
-                        if (lowTag === 'non-fiction') return 'Non-Fiction';
-                        if (lowTag === 'academic works' || lowTag === 'academic work') return 'Academic Work';
-                        return tag;
-                    });
-                    if (originalTags !== JSON.stringify(item.tags)) {
-                        migrated = true;
-                    }
-                }
-            });
-
-            if (migrated) saveToStorage();
-        } catch (error) {
-            console.error('Error loading inventory:', error);
-            inventory = {};
-        }
-    }
-
-    const savedPointer = localStorage.getItem('binPointer');
-    if (savedPointer) {
-        binPointer = parseInt(savedPointer);
-    }
-}
-
-function saveToStorage() {
-    try {
-        localStorage.setItem('chaosInventory', JSON.stringify(inventory));
-        localStorage.setItem('binPointer', binPointer.toString());
-    } catch (error) {
-        console.error('Error saving to storage:', error);
-        showMessage('Error saving data', 'error');
-    }
-}
+// Storage functions replaced by StorageManager in storage.js
 
 /**
  * Calculate multi-dimensional statistics about the current inventory
@@ -264,7 +196,7 @@ function renderDashboardView() {
 
     const recentItemsEl = document.getElementById('dashRecentItems');
     if (recentItemsEl) {
-        const recentCount = Object.values(inventory).filter(item => isRecentDate(item.dateAdded)).length;
+        const recentCount = Object.values(inventory).filter(item => InventoryHelpers.isRecentDate(item.dateAdded)).length;
         recentItemsEl.textContent = recentCount;
     }
 
@@ -621,7 +553,7 @@ function handleAddItem(e) {
         showMessage(`Updated "${itemName}"`, 'success');
     } else {
         const assignedBin = selectedBin;
-        const newId = generateUniqueId();
+        const newId = InventoryHelpers.generateUniqueId(inventory);
         inventory[itemName] = {
             id: newId,
             author: itemAuthor,
@@ -635,7 +567,7 @@ function handleAddItem(e) {
         showMessage(`Catalog updated: '${itemName}' (#${newId}) marked as ${assignedBin}`, 'success');
     }
 
-    saveToStorage();
+    StorageManager.saveInventory(inventory);
     setItemFormMode('add');
 
     // Clear and close
@@ -688,7 +620,7 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
 
     container.innerHTML = items.map(([name, details]) => {
         const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        const date = formatDisplayDate(details.dateAdded);
+        const date = InventoryHelpers.formatDisplayDate(details.dateAdded);
         const categoryCount = details.tags.length;
         const tagBadges = details.tags.length > 0
             ? details.tags.slice(0, 3).map((tag) => `<span class="card-side-tag">${tag}</span>`).join('')
@@ -795,7 +727,7 @@ function filterByTag(tag) {
 function deleteItem(itemName) {
     openConfirmModal(`Remove "${itemName}" from the catalog?`, () => {
         delete inventory[itemName];
-        saveToStorage();
+        StorageManager.saveInventory(inventory);
         renderListView();
         renderBinStatus();
         renderTagList();
@@ -909,9 +841,9 @@ function sortEntries(entries) {
     if (sortMode === 'name') {
         sorted.sort((a, b) => a[0].localeCompare(b[0]));
     } else if (sortMode === 'oldest') {
-        sorted.sort((a, b) => getDateValue(a[1].dateAdded) - getDateValue(b[1].dateAdded));
+        sorted.sort((a, b) => InventoryHelpers.getDateValue(a[1].dateAdded) - InventoryHelpers.getDateValue(b[1].dateAdded));
     } else {
-        sorted.sort((a, b) => getDateValue(b[1].dateAdded) - getDateValue(a[1].dateAdded));
+        sorted.sort((a, b) => InventoryHelpers.getDateValue(b[1].dateAdded) - InventoryHelpers.getDateValue(a[1].dateAdded));
     }
     return sorted;
 }
@@ -965,7 +897,7 @@ function filterRecentItems() {
     currentQuery = '';
     activeTagFilter = '';
     activeBinFilter = '';
-    const recentEntries = Object.entries(inventory).filter(([, details]) => isRecentDate(details.dateAdded));
+    const recentEntries = Object.entries(inventory).filter(([, details]) => InventoryHelpers.isRecentDate(details.dateAdded));
     switchView('list');
     renderListView(sortEntries(recentEntries), 'recent');
 }
@@ -981,44 +913,7 @@ function filterByBin(bin) {
     showMessage(`Showing titles from ${bin}`, 'info', 1500);
 }
 
-function isRecentDate(dateValue) {
-    const addedAt = getDateValue(dateValue);
-    if (!addedAt) return false;
-
-    const addedDate = new Date(addedAt);
-    const today = new Date();
-
-    return addedDate.getFullYear() === today.getFullYear() &&
-           addedDate.getMonth() === today.getMonth() &&
-           addedDate.getDate() === today.getDate();
-}
-
-function getDateValue(dateValue) {
-    if (!dateValue) return 0;
-    const parsed = Date.parse(dateValue);
-    return Number.isNaN(parsed) ? 0 : parsed;
-}
-function formatDisplayDate(dateValue) {
-    const value = getDateValue(dateValue);
-    if (!value) return 'No date';
-    return new Date(value).toLocaleDateString('en-GB');
-}
-
-/**
- * Generate a unique 4-digit ID for a book
- */
-function generateUniqueId() {
-    let id;
-    let attempts = 0;
-    const existingIds = Object.values(inventory).map(item => item.id?.toString());
-
-    do {
-        id = Math.floor(1000 + Math.random() * 9000).toString();
-        attempts++;
-    } while (existingIds.includes(id) && attempts < 100);
-
-    return id;
-}
+// Utility functions replaced by InventoryHelpers in helpers.js
 
 
 
