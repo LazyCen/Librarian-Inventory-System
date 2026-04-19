@@ -93,6 +93,18 @@ function loadFromStorage() {
                     item.bin = item.isBorrowed ? 'Borrowed' : 'Added';
                     migrated = true;
                 }
+                if (item.tags && Array.isArray(item.tags)) {
+                    const originalTags = JSON.stringify(item.tags);
+                    item.tags = item.tags.map(tag => {
+                        const lowTag = tag.toLowerCase();
+                        if (lowTag === 'non-fiction') return 'Non-Fiction';
+                        if (lowTag === 'academic works' || lowTag === 'academic work') return 'Academic Work';
+                        return tag;
+                    });
+                    if (originalTags !== JSON.stringify(item.tags)) {
+                        migrated = true;
+                    }
+                }
             });
 
             if (migrated) saveToStorage();
@@ -125,13 +137,16 @@ function saveToStorage() {
 function getInventoryStats() {
     const stats = {
         tagCounts: {},
-        statusCounts: {
-            'Added': 0,
-            'Borrowed': 0,
-            'Returned': 0
-        },
+        statusCounts: {},
         totalBooks: 0
     };
+
+    // Initialize statusCounts with all defined bins
+    if (Array.isArray(bins)) {
+        bins.forEach(bin => {
+            stats.statusCounts[bin] = 0;
+        });
+    }
 
     const items = Object.values(inventory);
     stats.totalBooks = items.length;
@@ -149,7 +164,8 @@ function getInventoryStats() {
         if (stats.statusCounts.hasOwnProperty(bin)) {
             stats.statusCounts[bin]++;
         } else {
-            stats.statusCounts['Added']++;
+            // Fallback for safety
+            stats.statusCounts['Added'] = (stats.statusCounts['Added'] || 0) + 1;
         }
     });
 
@@ -233,9 +249,8 @@ function renderDashboardView() {
         .filter(([, count]) => count > 0)
         .sort((a, b) => b[1] - a[1]);
         
-    // Take top 4 categories for the donut chart
-    const topTagData = tagData.slice(0, 4);
-    const totalTagTransactions = topTagData.reduce((acc, [, count]) => acc + count, 0);
+    // Use all active categories for the donut chart
+    const totalTagTransactions = tagData.reduce((acc, [, count]) => acc + count, 0);
 
     // Update Stats Cards
     const totalBooksEl = document.getElementById('dashTotalBooks');
@@ -254,7 +269,7 @@ function renderDashboardView() {
     }
 
     // Render Donut Chart & List
-    renderDonutChart(topTagData, totalTagTransactions);
+    renderDonutChart(tagData, totalTagTransactions);
 
     // Render Dashboard Borrowed List
     renderDashboardBorrowedList();
@@ -278,7 +293,11 @@ function renderDonutChart(data, total) {
         return;
     }
 
-    const colors = ['#3b82f6', '#22c55e', '#ef4444', '#f97316']; // Blue, Green, Red, Orange
+    const colors = [
+        '#3b82f6', '#22c55e', '#ef4444', '#f97316', 
+        '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+        '#f59e0b', '#10b981', '#6366f1', '#a855f7'
+    ]; // Expanded palette: Blue, Green, Red, Orange, Purple, Pink, Cyan, Lime, Amber, Emerald, Indigo, Violet
     const radius = 80;
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
@@ -297,22 +316,38 @@ function renderDonutChart(data, total) {
         // SVG Segment
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("class", "donut-segment");
+        circle.setAttribute("data-label", label);
+        circle.setAttribute("data-index", i.toString());
         circle.setAttribute("cx", "100");
         circle.setAttribute("cy", "100");
         circle.setAttribute("r", radius.toString());
         circle.setAttribute("stroke", colors[i % colors.length]);
         circle.setAttribute("stroke-dasharray", `${dashArray} ${circumference - dashArray}`);
-        circle.setAttribute("stroke-dashoffset", (-currentOffset).toString());
+        circle.setAttribute("stroke-dashoffset", circumference.toString()); // Start from full circumference for animation
+        circle.style.setProperty('--dash-offset', (-currentOffset).toString());
+        circle.onmouseenter = () => highlightCategory(label, true);
+        circle.onmouseleave = () => highlightCategory(label, false);
+        circle.onclick = () => filterByTag(label);
         svg.appendChild(circle);
+
+        // Trigger animation after a short delay
+        setTimeout(() => {
+            circle.setAttribute("stroke-dashoffset", (-currentOffset).toString());
+        }, 50 * i);
 
         currentOffset += dashArray;
 
         // List Item
         const color = colors[i % colors.length];
         list.innerHTML += `
-            <div class="category-item clickable" onclick="filterByTag('${label}')">
+            <div class="category-item clickable" 
+                 data-label="${label}" 
+                 data-index="${i}"
+                 onmouseenter="highlightCategory('${label}', true)"
+                 onmouseleave="highlightCategory('${label}', false)"
+                 onclick="filterByTag('${label}')">
                 <div class="category-info">
-                    <div class="category-bullet" style="background: ${color}"></div>
+                    <div class="category-bullet" style="background: ${color}; box-shadow: 0 0 10px ${color}80;"></div>
                     <div class="category-details">
                         <span class="category-name">${label}</span>
                         <span class="category-sub">Total Books</span>
@@ -329,6 +364,32 @@ function renderDonutChart(data, total) {
 
             document.getElementById('donutCenterText').textContent = label;
             document.getElementById('donutCenterSub').textContent = `${count.toLocaleString()} Total Books`;
+        }
+    });
+}
+
+/**
+ * Highlights a category in both the donut chart and the legend
+ * @param {string} label - The category label to highlight
+ * @param {boolean} active - Whether to turn highlight on or off
+ */
+function highlightCategory(label, active) {
+    const segments = document.querySelectorAll(`.donut-segment[data-label="${label}"]`);
+    const listItems = document.querySelectorAll(`.category-item[data-label="${label}"]`);
+
+    segments.forEach(el => {
+        if (active) {
+            el.classList.add('highlighted');
+        } else {
+            el.classList.remove('highlighted');
+        }
+    });
+
+    listItems.forEach(el => {
+        if (active) {
+            el.classList.add('highlighted');
+        } else {
+            el.classList.remove('highlighted');
         }
     });
 }
@@ -353,21 +414,21 @@ function renderDashboardBorrowedList() {
     }
 
     container.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-            ${borrowedItems.map(([name, details]) => {
+        <div class="dash-borrowed-grid">
+            ${borrowedItems.map(([name, details], index) => {
         const bookId = details.id || 'N/A';
         return `
-                    <div class="dash-borrowed-item" style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 12px; transition: all 0.2s ease;">
-                        <div style="width: 48px; height: 48px; min-width: 48px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                    <div class="dash-borrowed-item" style="animation-delay: ${index * 0.1}s">
+                        <div class="dash-borrowed-id">
                             #${bookId}
                         </div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${name}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; font-weight: 600;">
-                                <i class="fas fa-user-tag" style="font-size: 0.7rem; color: #f59e0b;"></i> ${details.borrower || 'Unknown Borrower'}
+                        <div class="dash-borrowed-info">
+                            <div class="dash-borrowed-name">${name}</div>
+                            <div class="dash-borrowed-meta">
+                                <i class="fas fa-user-tag"></i> ${details.borrower || 'Unknown'}
                             </div>
                         </div>
-                        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="openEditItemModal('${name.replace(/'/g, "\\'")}')">
+                        <button class="btn-manage" onclick="openEditItemModal('${name.replace(/'/g, "\\'")}')">
                             Manage
                         </button>
                     </div>
@@ -420,7 +481,7 @@ function setItemFormMode(mode = 'add', itemName = '', currentBin = '') {
     editingItemName = isEditMode ? itemName : null;
 
     if (modalTitle) {
-        modalTitle.textContent = isEditMode ? 'Update Book' : 'Add New Document';
+        modalTitle.textContent = isEditMode ? 'Update Book' : 'Register New Book';
     }
 
     if (submitBtn) {
@@ -443,7 +504,7 @@ function setItemFormMode(mode = 'add', itemName = '', currentBin = '') {
                 `;
             } else if (currentBin === 'Added') {
                 binSelect.innerHTML = `
-                    <option value="Added">Register</option>
+                    <option value="Books">Register</option>
                 `;
             } else if (currentBin === 'Borrowed') {
                 binSelect.innerHTML = `
@@ -527,7 +588,11 @@ function handleAddItem(e) {
 
     const parsedTags = itemTags
         .split(',')
-        .map(tag => tag.trim().toLowerCase())
+        .map(tag => {
+            const t = tag.trim().toLowerCase();
+            // Title Case: capitalize first letter of each word and after hyphens
+            return t.split(/([- ])/).map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+        })
         .filter(tag => tag.length > 0);
 
     if (editingItemName) {
@@ -638,16 +703,25 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
             actionHtml = `<div class="card-meta" style="color: var(--text-main); font-weight: 600;"><i class="fas fa-undo" style="color: #22c55e;"></i> Returned by: ${details.returner}</div>`;
         }
 
-        const borrowedBadge = details.isBorrowed ? '<span class="borrowed-badge">BORROWED</span>' : '';
+        let statusBadge = '';
+        let cardClass = '';
+        if (details.isBorrowed) {
+            statusBadge = '<span class="borrowed-badge">BORROWED</span>';
+            cardClass = 'borrowed-item';
+        } else if (details.bin === 'Returned') {
+            statusBadge = '<span class="returned-badge">RETURNED</span>';
+            cardClass = 'returned-item';
+        }
+
         const bookId = details.id || 'N/A';
 
         return `
-            <div class="item-card ${details.isBorrowed ? 'borrowed-item' : ''}">
+            <div class="item-card ${cardClass}">
                 <div class="card-options" onclick="openEditItemModal('${safeName}')">
                     <i class="fas fa-pen"></i>
                 </div>
                 <div class="card-icon">#${bookId}</div>
-                <div class="card-updates">Catalog record ${borrowedBadge}</div>
+                <div class="card-updates">Catalog record ${statusBadge}</div>
                 <h4 class="card-title">${name}</h4>
                 ${authorHtml}
                 <div class="card-body-row">
@@ -767,15 +841,18 @@ function renderBinStatus() {
     if (!container) return;
 
     container.innerHTML = bins.map((bin) => {
-        const itemCount = Object.values(inventory).filter(item => (item.bin || (item.isBorrowed ? 'Borrowed' : 'Added')) === bin).length;
+        const isBooksBin = bin === 'Books';
+        const itemCount = isBooksBin 
+            ? Object.values(inventory).filter(item => (item.bin || (item.isBorrowed ? 'Borrowed' : 'Added')) !== 'Added').length 
+            : Object.values(inventory).filter(item => (item.bin || (item.isBorrowed ? 'Borrowed' : 'Added')) === bin).length;
 
         let iconStr = '<i class="fas fa-box"></i>';
         if (bin === 'Added') iconStr = '<i class="fas fa-plus-circle"></i>';
         if (bin === 'Borrowed') iconStr = '<i class="fas fa-hand-holding-hand"></i>';
         if (bin === 'Returned') iconStr = '<i class="fas fa-undo"></i>';
-        if (bin === 'Books') iconStr = '<i class="fas fa-book"></i>';
+        if (bin === 'Books') iconStr = '<i class="fas fa-book-open"></i>';
 
-        const titleText = bin === 'Books' ? 'Books' : `${bin} Books`;
+        const titleText = isBooksBin ? 'Books' : `${bin} Books`;
 
         return `
             <div class="bin-card" onclick="filterByBin('${bin}')">
@@ -810,8 +887,18 @@ function getFilteredEntries() {
     if (activeTagFilter) {
         entries = entries.filter(([, details]) => details.tags && details.tags.includes(activeTagFilter));
     }
+    const getEffectiveBin = (details) => details.bin || (details.isBorrowed ? 'Borrowed' : 'Added');
+
     if (activeBinFilter) {
-        entries = entries.filter(([, details]) => (details.bin || (details.isBorrowed ? 'Borrowed' : 'Added')) === activeBinFilter);
+        if (activeBinFilter === 'Books') {
+            // "Books" bin shows everything that has been registered/processed (not "Added" status)
+            entries = entries.filter(([, details]) => getEffectiveBin(details) !== 'Added');
+        } else {
+            entries = entries.filter(([, details]) => getEffectiveBin(details) === activeBinFilter);
+        }
+    } else {
+        // Default "Books" view (no active filter) also excludes "Added" items
+        entries = entries.filter(([, details]) => getEffectiveBin(details) !== 'Added');
     }
     entries = sortEntries(entries);
     return entries;
@@ -897,8 +984,13 @@ function filterByBin(bin) {
 function isRecentDate(dateValue) {
     const addedAt = getDateValue(dateValue);
     if (!addedAt) return false;
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    return addedAt >= sevenDaysAgo;
+
+    const addedDate = new Date(addedAt);
+    const today = new Date();
+
+    return addedDate.getFullYear() === today.getFullYear() &&
+           addedDate.getMonth() === today.getMonth() &&
+           addedDate.getDate() === today.getDate();
 }
 
 function getDateValue(dateValue) {

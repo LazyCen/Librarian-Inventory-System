@@ -227,7 +227,7 @@
             href="#"
             class="nav-item"
             data-view="list"
-            onclick="switchView('list')"
+            onclick="showAllItems()"
           >
             <i class="fas fa-table-list"></i> Books
           </a>
@@ -261,9 +261,9 @@
           </div>
 
           <div class="header-actions">
-            <button class="btn-secondary" onclick="switchView('list')">
+            <div class="btn-secondary">
               <i class="fas fa-book-bookmark"></i> Catalog
-            </button>
+            </div>
             <button class="btn-primary" onclick="openAddItemModal()">
               <i class="fas fa-plus"></i> Register Book
             </button>
@@ -274,7 +274,7 @@
         <div class="dashboard-header">
           <div class="page-title">
             <i class="fas fa-book-open-reader"></i>
-            <span id="currentViewTitle">Overview</span>
+            <span id="currentViewTitle">Dashboard</span>
           </div>
           <div class="filter-actions">
             <button
@@ -291,7 +291,7 @@
         <div id="view-dashboard" class="view-content hidden">
           <div class="stats-grid">
             <!-- Total Books -->
-            <div class="stats-card clickable" onclick="showAllItems()">
+            <div class="stats-card">
               <div class="stats-header">
                 <div
                   class="stats-icon"
@@ -309,10 +309,7 @@
               </div>
             </div>
             <!-- Total Tags -->
-            <div
-              class="stats-card clickable"
-              onclick="focusTopTagFromDashboard()"
-            >
+            <div class="stats-card">
               <div class="stats-header">
                 <div
                   class="stats-icon"
@@ -330,7 +327,7 @@
               </div>
             </div>
             <!-- Total Bins -->
-            <div class="stats-card clickable" onclick="switchView('bins')">
+            <div class="stats-card">
               <div class="stats-header">
                 <div
                   class="stats-icon"
@@ -338,7 +335,7 @@
                 >
                   <i class="fas fa-boxes-stacked"></i>
                 </div>
-                <span>Bin Statuses</span>
+                <span>Bin Status</span>
               </div>
               <div class="stats-body">
                 <div>
@@ -348,7 +345,7 @@
               </div>
             </div>
             <!-- Recent Activity -->
-            <div class="stats-card clickable" onclick="filterRecentItems()">
+            <div class="stats-card">
               <div class="stats-header">
                 <div
                   class="stats-icon"
@@ -361,7 +358,7 @@
               <div class="stats-body">
                 <div>
                   <div class="stats-number" id="dashRecentItems">0</div>
-                  <div class="stats-label">Added this week</div>
+                  <div class="stats-label">Added today</div>
                 </div>
               </div>
             </div>
@@ -369,23 +366,13 @@
 
           <div class="librarian-panel">
             <div class="librarian-widget">
-              <h3><i class="fas fa-list-check"></i> Desk Quick Actions</h3>
+              <h3><i class="fas fa-list-check"></i>Quick Actions</h3>
               <div class="librarian-actions">
                 <button class="btn-secondary" onclick="showAllItems()">
                   <i class="fas fa-book-open"></i> View Full Catalog
                 </button>
                 <button class="btn-secondary" onclick="filterRecentItems()">
                   <i class="fas fa-clock"></i> New Arrivals
-                </button>
-                <button class="btn-secondary" onclick="switchView('bins')">
-                  <i class="fas fa-boxes-stacked"></i> Shelf Occupancy
-                </button>
-                <button
-                  class="btn-secondary"
-                  style="color: #0d9488"
-                  onclick="handleShowSummaryReport()"
-                >
-                  <i class="fas fa-chart-line"></i> Analytics Summary
                 </button>
               </div>
             </div>
@@ -396,8 +383,6 @@
             <div class="chart-header">
               <span class="chart-title"
                 ><i
-                  class="fas fa-tags"
-                  style="margin-right: 8px; color: var(--primary)"
                 ></i>
                 Categories</span
               >
@@ -438,7 +423,6 @@
             >
               <span class="chart-title" style="font-weight: 700">
                 <i
-                  class="fas fa-hand-holding-hand"
                   style="margin-right: 8px"
                 ></i>
                 Borrowed Books
@@ -454,7 +438,7 @@
         <div id="view-list" class="view-content hidden">
           <div class="flex items-center gap-4 mb-6">
             <span style="font-weight: 700; color: var(--text-main)"
-              >Catalog Records</span
+              >Books Records</span
             >
             <span
               id="itemCount"
@@ -464,7 +448,7 @@
           </div>
           <div class="list-toolbar">
             <button class="btn-secondary" onclick="switchView('dashboard')">
-              <i class="fas fa-chart-pie"></i> Back to Overview
+              <i class="fas fa-chart-pie"></i> Back to Dashboard
             </button>
           </div>
           <div id="inventoryList" class="item-grid fade-in"></div>
@@ -502,7 +486,7 @@
     <div id="addItemModal" class="modal-overlay hidden">
       <div class="modal-content animate-fade-in">
         <div class="modal-header">
-          <h3 id="itemModalTitle" class="modal-title">Add New Book</h3>
+          <h3 id="itemModalTitle" class="modal-title">Register New Book</h3>
           <button
             onclick="closeAddItemModal()"
             style="
@@ -510,6 +494,7 @@
               border: none;
               font-size: 1.5rem;
               cursor: pointer;
+              color: white;
             "
           >
             &times;
@@ -522,7 +507,7 @@
               type="text"
               id="itemName"
               class="form-input"
-              placeholder="e.g. The Great Gatsby"
+              placeholder="e.g. Fatty the Fat Lazy Cat"
               required
             />
           </div>
@@ -532,7 +517,7 @@
               type="text"
               id="itemAuthor"
               class="form-input"
-              placeholder="e.g. F. Scott Fitzgerald"
+              placeholder="e.g.  Cathy H. "
             />
           </div>
           <div class="form-group">
@@ -541,7 +526,7 @@
               type="text"
               id="itemTags"
               class="form-input"
-              placeholder="e.g. fiction, classic, literature"
+              placeholder="e.g. Fiction, Non-Fiction, Academic Work"
             />
           </div>
           <div class="form-group">
