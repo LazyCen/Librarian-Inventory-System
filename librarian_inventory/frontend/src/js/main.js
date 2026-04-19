@@ -6,7 +6,7 @@
 // Global state variables
 let inventory = {}; // Stores all inventory items
 let bins = ["Books", "Added", "Borrowed", "Returned"]; // Available bin statuses
-let binPointer = 0; // Deprecated
+
 let currentView = 'dashboard'; // Tracks the active view
 let currentQuery = '';
 let activeTagFilter = '';
@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Load saved data from browser's local storage
     inventory = StorageManager.loadInventory();
-    binPointer = StorageManager.loadBinPointer();
 
     // Render the initial view
     renderListView();
@@ -60,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('Application ready');
 });
 
-// Storage functions replaced by StorageManager in storage.js
+// Core functions for inventory management
 
 /**
  * Calculate multi-dimensional statistics about the current inventory
@@ -74,11 +73,9 @@ function getInventoryStats() {
     };
 
     // Initialize statusCounts with all defined bins
-    if (Array.isArray(bins)) {
-        bins.forEach(bin => {
-            stats.statusCounts[bin] = 0;
-        });
-    }
+    bins.forEach(bin => {
+        stats.statusCounts[bin] = 0;
+    });
 
     const items = Object.values(inventory);
     stats.totalBooks = items.length;
@@ -92,7 +89,7 @@ function getInventoryStats() {
         }
 
         // Status stats
-        const bin = item.bin || (item.isBorrowed ? 'Borrowed' : 'Added');
+        const bin = InventoryHelpers.getEffectiveBin(item);
         if (stats.statusCounts.hasOwnProperty(bin)) {
             stats.statusCounts[bin]++;
         } else {
@@ -162,8 +159,7 @@ function switchView(view) {
     if (view === 'bins') renderBinStatus();
     if (view === 'dashboard') renderDashboardView();
 
-    // Update next bin display
-    updateNextBinDisplay();
+
 
     // Refresh users panel status
     if (typeof renderUsersPanel === 'function') renderUsersPanel();
@@ -234,12 +230,7 @@ function renderDonutChart(data, total) {
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
 
-    // Icon mapping for center display
-    const statusIcons = {
-        'Added': '<i class="fas fa-circle-plus" style="color: #3b82f6;"></i>',
-        'Borrowed': '<i class="fas fa-hand-holding-hand" style="color: #22c55e;"></i>',
-        'Returned': '<i class="fas fa-undo" style="color: #ef4444;"></i>'
-    };
+
 
     data.forEach(([label, count], i) => {
         const percent = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
@@ -292,7 +283,7 @@ function renderDonutChart(data, total) {
         // Update Center text and icon to top status
         if (i === 0) {
             const iconEl = document.getElementById('donutCenterIcon');
-            if (iconEl) iconEl.innerHTML = statusIcons[label] || '<i class="fas fa-tag" style="color: var(--primary);"></i>';
+            if (iconEl) iconEl.innerHTML = '<i class="fas fa-tag" style="color: var(--primary);"></i>';
 
             document.getElementById('donutCenterText').textContent = label;
             document.getElementById('donutCenterSub').textContent = `${count.toLocaleString()} Total Books`;
@@ -370,9 +361,7 @@ function renderDashboardBorrowedList() {
     `;
 }
 
-function updateNextBinDisplay() {
-    // Deprecated for the new Bin selection system
-}
+
 
 /**
  * Toggles the borrower name field based on whether the borrowed checkbox is checked
@@ -430,30 +419,17 @@ function setItemFormMode(mode = 'add', itemName = '', currentBin = '') {
             binSelect.value = 'Added';
             toggleBorrowerField();
         } else {
-            if (currentBin === 'Books') {
-                binSelect.innerHTML = `
-                    <option value="Borrowed">Borrow Book</option>
-                `;
-            } else if (currentBin === 'Added') {
-                binSelect.innerHTML = `
-                    <option value="Books">Register</option>
-                `;
-            } else if (currentBin === 'Borrowed') {
-                binSelect.innerHTML = `
-                    <option value="Borrowed">Borrowed</option>
-                    <option value="Returned">Returned</option>
-                `;
-            } else if (currentBin === 'Returned') {
-                binSelect.innerHTML = `
-                    <option value="Books">Books</option>
-                `;
-            } else {
-                binSelect.innerHTML = `
-                    <option value="Books">Books</option>
-                    <option value="Borrowed">Borrowed</option>
-                    <option value="Returned">Returned</option>
-                `;
-            }
+            const options = {
+                'Books': '<option value="Borrowed">Borrow Book</option>',
+                'Added': '<option value="Books">Register</option>',
+                'Borrowed': '<option value="Borrowed">Borrowed</option><option value="Returned">Returned</option>',
+                'Returned': '<option value="Books">Books</option>'
+            };
+            binSelect.innerHTML = options[currentBin] || `
+                <option value="Books">Books</option>
+                <option value="Borrowed">Borrowed</option>
+                <option value="Returned">Returned</option>
+            `;
         }
     }
 }
@@ -751,7 +727,7 @@ function openEditItemModal(itemName) {
     const binSelect = document.getElementById('itemBinSelection');
     if (!itemNameInput || !itemTagsInput) return;
 
-    const currentBin = itemData.bin || (itemData.isBorrowed ? 'Borrowed' : 'Added');
+    const currentBin = InventoryHelpers.getEffectiveBin(itemData);
     setItemFormMode('edit', itemName, currentBin);
     itemNameInput.value = itemName;
     if (itemAuthorInput) itemAuthorInput.value = itemData.author || '';
@@ -775,8 +751,8 @@ function renderBinStatus() {
     container.innerHTML = bins.map((bin) => {
         const isBooksBin = bin === 'Books';
         const itemCount = isBooksBin 
-            ? Object.values(inventory).filter(item => (item.bin || (item.isBorrowed ? 'Borrowed' : 'Added')) !== 'Added').length 
-            : Object.values(inventory).filter(item => (item.bin || (item.isBorrowed ? 'Borrowed' : 'Added')) === bin).length;
+            ? Object.values(inventory).filter(item => InventoryHelpers.getEffectiveBin(item) !== 'Added').length 
+            : Object.values(inventory).filter(item => InventoryHelpers.getEffectiveBin(item) === bin).length;
 
         let iconStr = '<i class="fas fa-box"></i>';
         if (bin === 'Added') iconStr = '<i class="fas fa-plus-circle"></i>';
@@ -819,18 +795,16 @@ function getFilteredEntries() {
     if (activeTagFilter) {
         entries = entries.filter(([, details]) => details.tags && details.tags.includes(activeTagFilter));
     }
-    const getEffectiveBin = (details) => details.bin || (details.isBorrowed ? 'Borrowed' : 'Added');
-
     if (activeBinFilter) {
         if (activeBinFilter === 'Books') {
             // "Books" bin shows everything that has been registered/processed (not "Added" status)
-            entries = entries.filter(([, details]) => getEffectiveBin(details) !== 'Added');
+            entries = entries.filter(([, details]) => InventoryHelpers.getEffectiveBin(details) !== 'Added');
         } else {
-            entries = entries.filter(([, details]) => getEffectiveBin(details) === activeBinFilter);
+            entries = entries.filter(([, details]) => InventoryHelpers.getEffectiveBin(details) === activeBinFilter);
         }
     } else {
         // Default "Books" view (no active filter) also excludes "Added" items
-        entries = entries.filter(([, details]) => getEffectiveBin(details) !== 'Added');
+        entries = entries.filter(([, details]) => InventoryHelpers.getEffectiveBin(details) !== 'Added');
     }
     entries = sortEntries(entries);
     return entries;
@@ -913,7 +887,7 @@ function filterByBin(bin) {
     showMessage(`Showing titles from ${bin}`, 'info', 1500);
 }
 
-// Utility functions replaced by InventoryHelpers in helpers.js
+// End of application logic
 
 
 

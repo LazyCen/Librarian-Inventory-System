@@ -4,8 +4,7 @@
  */
 window.StorageManager = {
     KEYS: {
-        INVENTORY: 'chaosInventory',
-        POINTER: 'binPointer'
+        INVENTORY: 'chaosInventory'
     },
 
     /**
@@ -101,20 +100,4 @@ window.StorageManager = {
         return inventory;
     },
 
-    /**
-     * Save the bin pointer (deprecated functionality support)
-     * @param {number} pointer 
-     */
-    saveBinPointer(pointer) {
-        localStorage.setItem(this.KEYS.POINTER, pointer.toString());
-    },
-
-    /**
-     * Load the bin pointer
-     * @returns {number}
-     */
-    loadBinPointer() {
-        const savedPointer = localStorage.getItem(this.KEYS.POINTER);
-        return savedPointer ? parseInt(savedPointer) : 0;
-    }
 };

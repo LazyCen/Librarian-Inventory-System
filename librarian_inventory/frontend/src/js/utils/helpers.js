@@ -58,5 +58,14 @@ window.InventoryHelpers = {
         } while (existingIds.includes(id) && attempts < 100);
 
         return id;
+    },
+
+    /**
+     * Get the effective bin/status of an item, accounting for legacy isBorrowed flag
+     * @param {Object} details 
+     * @returns {string} One of: 'Added', 'Borrowed', 'Returned', 'Books'
+     */
+    getEffectiveBin(details) {
+        return details.bin || (details.isBorrowed ? 'Borrowed' : 'Added');
     }
 };
