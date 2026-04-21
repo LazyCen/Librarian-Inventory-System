@@ -536,6 +536,7 @@ function openConfirmModal(message, onConfirm) {
             );
         }
     }
+}
 
 function closeConfirmModal() {
     const confirmModal = document.getElementById('confirmModal');
