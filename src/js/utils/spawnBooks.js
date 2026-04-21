@@ -9,7 +9,9 @@
         if (!layer) return;
         layer.innerHTML = '';
         
-        const TOTAL = 40; 
+        // Reduce count on mobile to improve performance
+        const isMobile = window.innerWidth < 768;
+        const TOTAL = isMobile ? 12 : 40; 
         
         const icons = [
             'fas fa-book', 
@@ -54,7 +56,13 @@
             book.style.left = `${startX}vw`;
             book.style.top = `${startY}vh`;
             book.style.color = '#e0f2fe';
-            book.style.filter = `drop-shadow(0 0 ${8 + depth * 12}px rgba(255,255,255,${0.2 + depth * 0.4})) blur(${blur}px)`;
+            
+            // Simplify or remove expensive filters on mobile for buttery smooth 60fps
+            if (isMobile) {
+                book.style.filter = `drop-shadow(0 0 4px rgba(255,255,255,0.2))`;
+            } else {
+                book.style.filter = `drop-shadow(0 0 ${8 + depth * 12}px rgba(255,255,255,${0.2 + depth * 0.4})) blur(${blur}px)`;
+            }
             
             const ic = document.createElement('i');
             ic.className = icons[Math.floor(Math.random() * icons.length)];

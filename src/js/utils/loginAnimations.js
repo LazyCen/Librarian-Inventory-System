@@ -17,20 +17,23 @@ document.addEventListener('DOMContentLoaded', () => {
     glassContainer.classList.remove('animate-fade-in');
 
     // Initial Login Card Entrance
+    // Use simpler animation on mobile (no scale, simpler ease) to avoid lagging the backdrop-filter blur
+    const isMobile = window.innerWidth < 768;
+    
     gsap.fromTo(glassContainer, 
         {
             y: 30,
             opacity: 0,
             autoAlpha: 0,
-            scale: 0.98
+            scale: isMobile ? 1 : 0.98
         },
         {
-            duration: 0.6,
+            duration: isMobile ? 0.4 : 0.6,
             y: 0,
             opacity: 1,
             autoAlpha: 1,
             scale: 1,
-            ease: "back.out(1.2)"
+            ease: isMobile ? "power2.out" : "back.out(1.2)"
         }
     );
 });
