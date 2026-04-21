@@ -526,7 +526,16 @@ function openConfirmModal(message, onConfirm) {
     confirmMessage.innerText = message;
     pendingConfirmAction = typeof onConfirm === 'function' ? onConfirm : null;
     confirmModal.classList.remove('hidden');
-}
+
+    if (typeof gsap !== 'undefined') {
+        const confirmCard = confirmModal.querySelector('.confirm-card');
+        if (confirmCard) {
+            gsap.fromTo(confirmCard,
+                { opacity: 0, scale: 0.9, y: 20 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "back.out(1.5)" }
+            );
+        }
+    }
 
 function closeConfirmModal() {
     const confirmModal = document.getElementById('confirmModal');
