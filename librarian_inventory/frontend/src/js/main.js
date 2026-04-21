@@ -171,7 +171,16 @@ function switchView(view) {
     const viewElement = document.getElementById(`view-${view}`);
     if (viewElement) {
         viewElement.classList.remove('hidden');
-        viewElement.classList.add('fade-in');
+        if (typeof gsap !== 'undefined') {
+            gsap.from(viewElement, {
+                duration: 0.5,
+                opacity: 0,
+                y: 15,
+                ease: "power2.out"
+            });
+        } else {
+            viewElement.classList.add('fade-in');
+        }
     }
 
     // Handle sort button visibility
@@ -218,21 +227,33 @@ function renderDashboardView() {
     // Use all active categories for the donut chart
     const totalTagTransactions = tagData.reduce((acc, [, count]) => acc + count, 0);
 
-    // Update Stats Cards
-    const totalBooksEl = document.getElementById('dashTotalBooks');
-    if (totalBooksEl) totalBooksEl.textContent = totalBooks.toLocaleString();
+    // Animate Stats Cards numbers using GSAP
+    const animateStat = (elementId, targetValue) => {
+        const el = document.getElementById(elementId);
+        if (el && typeof gsap !== 'undefined') {
+            gsap.fromTo(el, 
+                { innerHTML: 0 }, 
+                {
+                    innerHTML: targetValue,
+                    duration: 1.5,
+                    snap: { innerHTML: 1 },
+                    ease: "power2.out",
+                    onUpdate: function() {
+                        el.textContent = Math.round(this.targets()[0].innerHTML).toLocaleString();
+                    }
+                }
+            );
+        } else if (el) {
+            el.textContent = targetValue.toLocaleString();
+        }
+    };
 
-    const totalTagsEl = document.getElementById('dashTotalTags');
-    if (totalTagsEl) totalTagsEl.textContent = Object.keys(tagCounts).length;
-
-    const totalBinsEl = document.getElementById('dashTotalBins');
-    if (totalBinsEl) totalBinsEl.textContent = bins.length;
-
-    const recentItemsEl = document.getElementById('dashRecentItems');
-    if (recentItemsEl) {
-        const recentCount = Object.values(inventory).filter(item => InventoryHelpers.isRecentDate(item.dateAdded)).length;
-        recentItemsEl.textContent = recentCount;
-    }
+    animateStat('dashTotalBooks', totalBooks);
+    animateStat('dashTotalTags', Object.keys(tagCounts).length);
+    animateStat('dashTotalBins', bins.length);
+    
+    const recentCount = Object.values(inventory).filter(item => InventoryHelpers.isRecentDate(item.dateAdded)).length;
+    animateStat('dashRecentItems', recentCount);
 
     // Render Donut Chart & List
     renderDonutChart(tagData, totalTagTransactions);
@@ -291,10 +312,23 @@ function renderDonutChart(data, total) {
         circle.onclick = () => filterByTag(label);
         svg.appendChild(circle);
 
-        // Trigger animation after a short delay
-        setTimeout(() => {
-            circle.setAttribute("stroke-dashoffset", (-currentOffset).toString());
-        }, 50 * i);
+        // Track original currentOffset for use inside GSAP
+        const targetOffset = -currentOffset;
+        
+        // Use GSAP to animate stroke-dashoffset
+        if (typeof gsap !== 'undefined') {
+            gsap.to(circle, {
+                strokeDashoffset: targetOffset,
+                duration: 1.2,
+                ease: "power2.out",
+                delay: i * 0.1
+            });
+        } else {
+            // Fallback
+            setTimeout(() => {
+                circle.setAttribute("stroke-dashoffset", targetOffset.toString());
+            }, 50 * i);
+        }
 
         currentOffset += dashArray;
 
@@ -692,6 +726,19 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
             </div>
         `;
     }).join('');
+
+    // GSAP Stagger Animation for the rendered items
+    if (typeof gsap !== 'undefined') {
+        const cards = container.querySelectorAll('.item-card');
+        gsap.from(cards, {
+            duration: 0.6,
+            y: 30,
+            opacity: 0,
+            stagger: 0.08,
+            ease: "back.out(1.2)",
+            clearProps: "all" // remove inline styles after animation so hover works optimally
+        });
+    }
 }
 
 /**

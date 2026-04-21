@@ -46,35 +46,63 @@
             const rotDirection = Math.random() > 0.5 ? 1 : -1;
             const rotE = (parseFloat(rotS) + rotDirection * (90 + Math.random() * 180)).toFixed(1);
             
-            // Use cssText to guarantee CSS Custom Properties are correctly applied!
-            book.style.cssText = `
-                width: ${size}px;
-                height: ${size}px;
-                font-size: ${size}px;
-                left: ${startX}vw;
-                top: ${startY}vh;
-                color: #e0f2fe;
-                filter: drop-shadow(0 0 ${8 + depth * 12}px rgba(255,255,255,${0.2 + depth * 0.4})) blur(${blur}px);
-                animation-duration: ${dur}s;
-                animation-delay: ${delay}s;
-                --rot-start: ${rotS}deg;
-                --rot-end: ${rotE}deg;
-                --tx: ${endX - startX}vw;
-                --ty: ${endY - startY}vh;
-                --book-opacity: ${opacity};
-            `;
+            // Base styling for the book element
+            book.style.width = `${size}px`;
+            book.style.height = `${size}px`;
+            book.style.fontSize = `${size}px`;
+            book.style.position = 'absolute';
+            book.style.left = `${startX}vw`;
+            book.style.top = `${startY}vh`;
+            book.style.color = '#e0f2fe';
+            book.style.filter = `drop-shadow(0 0 ${8 + depth * 12}px rgba(255,255,255,${0.2 + depth * 0.4})) blur(${blur}px)`;
             
             const ic = document.createElement('i');
             ic.className = icons[Math.floor(Math.random() * icons.length)];
             book.appendChild(ic);
             layer.appendChild(book);
+
+            // GSAP Animation
+            gsap.fromTo(book, 
+                { 
+                    x: 0, 
+                    y: 0, 
+                    rotation: rotS, 
+                    opacity: 0,
+                    scale: 0.8
+                },
+                {
+                    x: `${endX - startX}vw`, 
+                    y: `${endY - startY}vh`, 
+                    rotation: rotE, 
+                    opacity: opacity,
+                    scale: 1,
+                    duration: dur, 
+                    delay: delay > 0 ? delay : 0, // Delay shouldn't be negative in this context for fromTo, we just let them start at different times or apply negative delay with GSAP correctly
+                    ease: "none", 
+                    repeat: -1,
+                    yoyo: false,
+                    onStart: function() {
+                        // Fade in nicely at start
+                        gsap.to(book, {opacity: opacity, duration: 2, ease: "power1.inOut"});
+                    },
+                    onRepeat: function() {
+                        // Fade in smoothly on repeat
+                        gsap.fromTo(book, {opacity: 0}, {opacity: opacity, duration: 2, ease: "power1.inOut"});
+                    }
+                }
+            );
+            
+            // Apply negative delay by adjusting the playhead
+            if (delay < 0) {
+                gsap.getTweensOf(book).forEach(t => t.progress(Math.abs(delay) / dur));
+            }
         }
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', runSpawnBooks);
+        document.addEventListener('DOMContentLoaded', () => setTimeout(runSpawnBooks, 100));
     } else {
-        runSpawnBooks();
+        setTimeout(runSpawnBooks, 100);
     }
 })();
 
