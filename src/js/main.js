@@ -260,6 +260,9 @@ function renderDashboardView() {
 
     // Render Dashboard Borrowed List
     renderDashboardBorrowedList();
+
+    // Render Dashboard Returned List
+    renderDashboardReturnedList();
 }
 
 /**
@@ -433,6 +436,50 @@ function renderDashboardBorrowedList() {
     `;
 }
 
+/**
+ * Render a simplified list of returned books for the dashboard
+ */
+function renderDashboardReturnedList() {
+    const container = document.getElementById('dashReturnedList');
+    if (!container) return;
+
+    const returnedItems = Object.entries(inventory).filter(([, details]) => details.bin === 'Returned');
+
+    if (returnedItems.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 2px dashed #f1f5f9; border-radius: 12px;">
+                <i class="fas fa-info-circle" style="font-size: 2rem; color: var(--primary); margin-bottom: 12px; opacity: 0.5;"></i>
+                <p>No books recently returned yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="dash-returned-grid">
+            ${returnedItems.map(([name, details], index) => {
+                const bookId = details.id || 'N/A';
+                return `
+                    <div class="dash-returned-item" style="animation-delay: ${index * 0.1}s">
+                        <div class="dash-returned-id">
+                            #${bookId}
+                        </div>
+                        <div class="dash-returned-info">
+                            <div class="dash-returned-name">${name}</div>
+                            <div class="dash-returned-meta">
+                                <i class="fas fa-user-check"></i> ${details.returner || 'Unknown'}
+                            </div>
+                        </div>
+                        <button class="btn-manage" onclick="openEditItemModal('${name.replace(/'/g, "\\'")}')">
+                            Manage
+                        </button>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
 
 
 /**
@@ -492,10 +539,10 @@ function setItemFormMode(mode = 'add', itemName = '', currentBin = '') {
             toggleBorrowerField();
         } else {
             const options = {
-                'Books': '<option value="Borrowed">Borrow Book</option>',
-                'Added': '<option value="Books">Register</option>',
-                'Borrowed': '<option value="Borrowed">Borrowed</option><option value="Returned">Returned</option>',
-                'Returned': '<option value="Books">Books</option>'
+                'Books': '<option value="Books">In Library</option><option value="Borrowed">Borrow Book</option><option value="Returned">Returned</option>',
+                'Added': '<option value="Added">Added</option><option value="Books">Register Book</option>',
+                'Borrowed': '<option value="Borrowed">Currently Borrowed</option><option value="Returned">Returned</option>',
+                'Returned': '<option value="Returned">Returned</option><option value="Books">Back to Library</option>'
             };
             binSelect.innerHTML = options[currentBin] || `
                 <option value="Books">Books</option>
@@ -506,11 +553,11 @@ function setItemFormMode(mode = 'add', itemName = '', currentBin = '') {
     }
 }
 
-function showMessage(message, type = 'info', duration = 3000) {
+function showMessage(message, type = 'info', duration = 3000, position = 'top') {
     const messageBox = document.getElementById('messageBox');
     if (!messageBox) return;
 
-    messageBox.className = `fade-in msg-${type}`;
+    messageBox.className = `fade-in msg-${type} at-${position}`;
     messageBox.innerText = message;
     messageBox.classList.remove('hidden');
 
@@ -598,6 +645,19 @@ function handleAddItem(e) {
             return;
         }
 
+        // Validation: Can't return if not borrowed
+        const currentBin = InventoryHelpers.getEffectiveBin(existingData);
+        if (selectedBin === 'Returned' && currentBin !== 'Borrowed' && currentBin !== 'Returned') {
+            showMessage("You can't returned the book, it is not borrowed", 'error');
+            return;
+        }
+
+        // Validation: Can't borrow if already borrowed
+        if (selectedBin === 'Borrowed' && currentBin === 'Borrowed') {
+            showMessage("sorry, this book is already borrowed", 'error');
+            return;
+        }
+
         delete inventory[editingItemName];
         inventory[itemName] = {
             ...existingData,
@@ -608,7 +668,11 @@ function handleAddItem(e) {
             borrower: isBorrowed ? itemBorrower : '',
             returner: selectedBin === 'Returned' ? itemReturner : ''
         };
-        showMessage(`Updated "${itemName}"`, 'success');
+        let successMsg = 'You successfully updated the book';
+        if (selectedBin === 'Borrowed') successMsg = 'Successfully Borrowed the book';
+        if (selectedBin === 'Returned') successMsg = 'Successfully Returned the book';
+
+        showMessage(successMsg, 'success', 3000);
     } else {
         const assignedBin = selectedBin;
         const newId = InventoryHelpers.generateUniqueId(inventory);
@@ -729,7 +793,7 @@ function renderListView(itemsToRender = null, query = "", targetContainerId = 'i
                     <button class="btn-secondary" style="padding: 8px 10px; font-size: 0.8rem;" onclick="openEditItemModal('${safeName}')">
                         <i class="fas fa-pen"></i> Update
                     </button>
-                    <button class="btn-secondary" style="padding: 8px 10px; font-size: 0.8rem; color: #b42318;" onclick="deleteItem('${safeName}')">
+                    <button class="btn-secondary btn-delete" style="padding: 8px 10px; font-size: 0.8rem;" onclick="deleteItem('${safeName}')">
                         <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
@@ -803,7 +867,7 @@ function deleteItem(itemName) {
         renderBinStatus();
         renderTagList();
         renderDashboardView();
-        showMessage(`Removed "${itemName}"`, 'info', 1800);
+        showMessage('You Successfully Remove the Book', 'info', 1800);
     });
 }
 

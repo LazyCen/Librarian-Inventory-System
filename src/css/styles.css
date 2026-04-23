@@ -584,6 +584,83 @@ body {
     transform: translateY(-1px);
 }
 
+/* Dashboard Returned Monitoring */
+.dash-returned-container {
+    padding: 10px 0;
+}
+
+.dash-returned-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.dash-returned-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeSlideUp 0.6s ease-out both;
+}
+
+.dash-returned-item:hover {
+    transform: translateY(-4px) scale(1.01);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3), 0 0 15px rgba(34, 197, 94, 0.1);
+}
+
+.dash-returned-id {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+}
+
+.dash-returned-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.dash-returned-name {
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+    font-size: 1rem;
+}
+
+.dash-returned-meta {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.dash-returned-meta i {
+    color: #22c55e;
+    font-size: 0.75rem;
+}
+
 @keyframes fadeSlideUp {
     from {
         opacity: 0;
@@ -728,6 +805,14 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.btn-delete:hover {
+    color: #ff4d4d !important;
+    border-color: rgba(255, 77, 77, 0.6) !important;
+    background-color: rgba(255, 77, 77, 0.05) !important;
+    box-shadow: 0 0 15px rgba(255, 77, 77, 0.4), var(--shadow-xs) !important;
+    text-shadow: 0 0 8px rgba(255, 77, 77, 0.6);
 }
 
 /* --- Modal --- */
@@ -1003,42 +1088,78 @@ body {
     }
 }
 
-/* Messaging */
+/* --- Notifications (Toast) --- */
 #messageBox {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    padding: 16px 24px;
-    border-radius: 8px;
-    z-index: 2000;
-    color: white;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 28px;
+    border-radius: 12px;
     font-weight: 600;
-    box-shadow: var(--shadow-md);
-    animation: slideInUp 0.3s ease-out;
+    font-size: 0.95rem;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-@keyframes slideInUp {
-    from {
-        transform: translateY(20px);
-        opacity: 0;
-    }
+#messageBox.at-top {
+    top: 30px;
+}
 
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+#messageBox.at-bottom {
+    bottom: 30px;
+}
+
+#messageBox.at-top.hidden {
+    top: -100px;
+    opacity: 0;
+}
+
+#messageBox.at-bottom.hidden {
+    bottom: -100px;
+    opacity: 0;
 }
 
 .msg-success {
-    background-color: #12b76a;
-}
-
-.msg-error {
-    background-color: #f04438;
+    background: rgba(34, 197, 94, 0.9) !important;
+    color: #ffffff !important;
+    border-color: rgba(34, 197, 94, 0.4) !important;
 }
 
 .msg-info {
-    background-color: var(--primary);
+    background: rgba(59, 130, 246, 0.9) !important;
+    color: #ffffff !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+.msg-error {
+    background: rgba(244, 63, 94, 0.9) !important;
+    color: #ffffff !important;
+    border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+@keyframes toastInTop {
+    from { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@keyframes toastInBottom {
+    from { transform: translateX(-50%) translateY(40px); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+#messageBox.at-top.fade-in {
+    animation: toastInTop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+#messageBox.at-bottom.fade-in {
+    animation: toastInBottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 /* --- Dashboard Specific --- */
